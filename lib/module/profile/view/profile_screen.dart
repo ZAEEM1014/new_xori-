@@ -15,8 +15,14 @@ class ProfileScreen extends GetView<ProfileController> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await controller.loadUserProfile();
+            await controller.refreshPosts();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
             children: [
               /// Settings Button
               Padding(
@@ -150,6 +156,13 @@ class ProfileScreen extends GetView<ProfileController> {
 
               /// Images / Reels Section
               Obx(() {
+                if (controller.isLoadingPosts.value) {
+                  return const Padding(
+                    padding: EdgeInsets.all(40.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                
                 if (controller.activeTab.value == 0) {
                   return _buildStaggeredGridPosts();
                 } else {
@@ -157,6 +170,7 @@ class ProfileScreen extends GetView<ProfileController> {
                 }
               }),
             ],
+            ),
           ),
         ),
       ),
@@ -178,21 +192,22 @@ class ProfileScreen extends GetView<ProfileController> {
           asset,
           width: 28,
           height: 28,
-          color: isActive ? AppColors.primary : AppColors.textLight,
+          colorFilter: ColorFilter.mode(
+            isActive ? AppColors.primary : AppColors.textLight,
+            BlendMode.srcIn,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildStaggeredGridPosts() {
-    final images = [
-      AppAssets.searchedImg1,
-      AppAssets.searchedImg2,
-      AppAssets.searchedImg3,
-      AppAssets.searchedImg4,
-      AppAssets.searchedImg5,
-    ];
-    final heights = [160.0, 220.0, 120.0, 180.0, 140.0];
+    if (controller.userPosts.isEmpty) {
+      return _buildEmptyState('No posts yet', 'Share your first post!');
+    }
+
+    final heights = [160.0, 220.0, 180.0, 140.0, 200.0, 160.0, 180.0, 220.0];
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: MasonryGridView.count(
@@ -201,23 +216,23 @@ class ProfileScreen extends GetView<ProfileController> {
         crossAxisSpacing: 8,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: images.length,
+        itemCount: controller.userPosts.length,
         itemBuilder: (context, index) {
-          return _gridImage(images[index], height: heights[index]);
+          final post = controller.userPosts[index];
+          final height = heights[index % heights.length];
+          return _buildPostGridItem(post, height: height);
         },
       ),
     );
   }
 
   Widget _buildStaggeredGridReels() {
-    final images = [
-      AppAssets.searchedImg1,
-      AppAssets.searchedImg2,
-      AppAssets.searchedImg3,
-      AppAssets.searchedImg4,
-      AppAssets.searchedImg5,
-    ];
-    final heights = [200.0, 180.0, 220.0, 160.0, 140.0];
+    if (controller.userReels.isEmpty) {
+      return _buildEmptyState('No reels yet', 'Create your first reel!');
+    }
+
+    final heights = [200.0, 180.0, 220.0, 160.0, 240.0, 180.0, 200.0, 160.0];
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: MasonryGridView.count(
@@ -226,22 +241,225 @@ class ProfileScreen extends GetView<ProfileController> {
         crossAxisSpacing: 8,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        itemCount: images.length,
+        itemCount: controller.userReels.length,
         itemBuilder: (context, index) {
-          return _gridImage(images[index], height: heights[index]);
+          final reel = controller.userReels[index];
+          final height = heights[index % heights.length];
+          return _buildReelGridItem(reel, height: height);
         },
       ),
     );
   }
 
-  Widget _gridImage(String asset, {double height = 160}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Image.asset(
-        asset,
-        fit: BoxFit.cover,
-        height: height,
-        width: double.infinity,
+  Widget _buildPostGridItem(post, {double height = 160}) {
+    return GestureDetector(
+      onTap: () {
+        // TODO: Navigate to post detail view
+        print('Tapped post: ${post.id}');
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: height,
+          width: double.infinity,
+          child: Stack(
+            children: [
+              // Post image
+              Image.network(
+                post.mediaUrls.isNotEmpty ? post.mediaUrls.first : '',
+                fit: BoxFit.cover,
+                height: height,
+                width: double.infinity,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: height,
+                    color: Colors.grey[300],
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      color: Colors.grey,
+                      size: 40,
+                    ),
+                  );
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    height: height,
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
+              ),
+              // Overlay with post info
+              Positioned(
+                bottom: 8,
+                left: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.favorite,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${post.likes.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildReelGridItem(reel, {double height = 200}) {
+    return GestureDetector(
+      onTap: () {
+        // TODO: Navigate to reel view
+        print('Tapped reel: ${reel.id}');
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: height,
+          width: double.infinity,
+          child: Stack(
+            children: [
+              // Reel thumbnail (for videos, you might want to show a thumbnail)
+              Image.network(
+                reel.mediaUrls.isNotEmpty ? reel.mediaUrls.first : '',
+                fit: BoxFit.cover,
+                height: height,
+                width: double.infinity,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: height,
+                    color: Colors.grey[300],
+                    child: const Icon(
+                      Icons.videocam,
+                      color: Colors.grey,
+                      size: 40,
+                    ),
+                  );
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    height: height,
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
+              ),
+              // Video play icon overlay
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    shape: BoxShape.circle,
+                  ),
+                    child: const Icon(
+                      Icons.play_arrow,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+              // Overlay with reel info
+              Positioned(
+                bottom: 8,
+                left: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.favorite,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${reel.likes.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.videocam,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.all(40.0),
+      child: Column(
+        children: [
+          Icon(
+            Icons.photo_library_outlined,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
       ),
     );
   }
