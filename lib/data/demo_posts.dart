@@ -1,0 +1,32 @@
+final demoPosts = [
+  {
+    "profilePic": "assets/images/profile1.png",
+    "name": "Esther",
+    "time": "8 min ago",
+    "postImage": "assets/images/profile1.png",
+    "caption": "If you could live anywhere in the world, where would you pick?",
+    "likes": "100K",
+    "comments": "2.5k",
+    "shares": "20k",
+  },
+  {
+    "profilePic": "assets/images/profile2.png",
+    "name": "David",
+    "time": "15 min ago",
+    "postImage": "assets/images/profile2.png",
+    "caption": "Sunset vibes 🌅",
+    "likes": "45K",
+    "comments": "1.2k",
+    "shares": "3.8k",
+  },
+  {
+    "profilePic": "assets/images/profile2.png",
+    "name": "Maya",
+    "time": "30 min ago",
+    "postImage": "assets/images/profile2.png",
+    "caption": "Travel more, worry less ✈️",
+    "likes": "67K",
+    "comments": "3.4k",
+    "shares": "9.2k",
+  },
+];
