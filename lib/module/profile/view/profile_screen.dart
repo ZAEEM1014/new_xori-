@@ -6,6 +6,7 @@ import '../../../widgets/gradient_button.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../controller/profile_controller.dart';
+import '../../../models/post_model.dart';
 
 class ProfileScreen extends GetView<ProfileController> {
   const ProfileScreen({super.key});
@@ -16,10 +17,7 @@ class ProfileScreen extends GetView<ProfileController> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async {
-            await controller.loadUserProfile();
-            await controller.refreshPosts();
-          },
+          onRefresh: controller.refreshProfile,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
@@ -185,7 +183,7 @@ class ProfileScreen extends GetView<ProfileController> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           color: isActive
-              ? AppColors.primary.withOpacity(0.1)
+              ? AppColors.primary.withValues(alpha: 0.1)
               : Colors.transparent,
         ),
         child: SvgPicture.asset(
@@ -206,8 +204,7 @@ class ProfileScreen extends GetView<ProfileController> {
       return _buildEmptyState('No posts yet', 'Share your first post!');
     }
 
-    final heights = [160.0, 220.0, 180.0, 140.0, 200.0, 160.0, 180.0, 220.0];
-    
+    final heights = [160.0, 220.0, 120.0, 180.0, 140.0, 200.0, 160.0, 180.0];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: MasonryGridView.count(
@@ -231,8 +228,7 @@ class ProfileScreen extends GetView<ProfileController> {
       return _buildEmptyState('No reels yet', 'Create your first reel!');
     }
 
-    final heights = [200.0, 180.0, 220.0, 160.0, 240.0, 180.0, 200.0, 160.0];
-    
+    final heights = [200.0, 180.0, 220.0, 160.0, 140.0, 240.0, 180.0, 200.0];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: MasonryGridView.count(
@@ -251,183 +247,89 @@ class ProfileScreen extends GetView<ProfileController> {
     );
   }
 
-  Widget _buildPostGridItem(post, {double height = 160}) {
-    return GestureDetector(
-      onTap: () {
-        // TODO: Navigate to post detail view
-        print('Tapped post: ${post.id}');
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: height,
-          width: double.infinity,
-          child: Stack(
-            children: [
-              // Post image
-              Image.network(
-                post.mediaUrls.isNotEmpty ? post.mediaUrls.first : '',
-                fit: BoxFit.cover,
-                height: height,
-                width: double.infinity,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: height,
-                    color: Colors.grey[300],
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey,
-                      size: 40,
-                    ),
-                  );
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    height: height,
-                    color: Colors.grey[200],
-                    child: const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                },
-              ),
-              // Overlay with post info
-              Positioned(
-                bottom: 8,
-                left: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.favorite,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${post.likes.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+  Widget _buildPostGridItem(Post post, {double height = 160}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Image.network(
+        post.mediaUrls.isNotEmpty ? post.mediaUrls.first : '',
+        fit: BoxFit.cover,
+        height: height,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            height: height,
+            color: Colors.grey[300],
+            child: const Icon(
+              Icons.image_not_supported,
+              color: Colors.grey,
+              size: 40,
+            ),
+          );
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            height: height,
+            color: Colors.grey[200],
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        },
       ),
     );
   }
-  
-  Widget _buildReelGridItem(reel, {double height = 200}) {
-    return GestureDetector(
-      onTap: () {
-        // TODO: Navigate to reel view
-        print('Tapped reel: ${reel.id}');
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: height,
-          width: double.infinity,
-          child: Stack(
-            children: [
-              // Reel thumbnail (for videos, you might want to show a thumbnail)
-              Image.network(
-                reel.mediaUrls.isNotEmpty ? reel.mediaUrls.first : '',
-                fit: BoxFit.cover,
+
+  Widget _buildReelGridItem(Post reel, {double height = 200}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
+        children: [
+          Image.network(
+            reel.mediaUrls.isNotEmpty ? reel.mediaUrls.first : '',
+            fit: BoxFit.cover,
+            height: height,
+            width: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
                 height: height,
-                width: double.infinity,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: height,
-                    color: Colors.grey[300],
-                    child: const Icon(
-                      Icons.videocam,
-                      color: Colors.grey,
-                      size: 40,
-                    ),
-                  );
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    height: height,
-                    color: Colors.grey[200],
-                    child: const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  );
-                },
-              ),
-              // Video play icon overlay
-              Positioned.fill(
-                child: Center(
-                  child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    shape: BoxShape.circle,
-                  ),
-                    child: const Icon(
-                      Icons.play_arrow,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
+                color: Colors.grey[300],
+                child: const Icon(
+                  Icons.videocam,
+                  color: Colors.grey,
+                  size: 40,
                 ),
-              ),
-              // Overlay with reel info
-              Positioned(
-                bottom: 8,
-                left: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.favorite,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${reel.likes.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        Icons.videocam,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                    ],
-                  ),
+              );
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                height: height,
+                color: Colors.grey[200],
+                child: const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              ),
-            ],
+              );
+            },
           ),
-        ),
+          // Play icon overlay for reels
+          Positioned.fill(
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.play_arrow,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

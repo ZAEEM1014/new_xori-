@@ -14,7 +14,7 @@ class AppAssets {
   static const String share = 'assets/icons/share.svg';
   static const String homeheart = 'assets/icons/home_heart.svg';
   static const String gridTabIcon = 'assets/icons/grid.svg';
-  static const String galleryIcon = 'assets/icons/gallery.svg';
+  static const String galleryIcon = 'assets/icons/Gallery.svg';
   static const String cameraIcon = 'assets/icons/Change Camera.svg';
   static const String uploadCloud = 'assets/icons/upload_cloud.svg';
   static const String tagIcon = 'assets/icons/tag.svg';

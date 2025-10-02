@@ -20,8 +20,8 @@ class ProfileController extends GetxController {
 
   // Real user statistics
   var posts = 0.obs;
-  var followers = 0.obs;
-  var following = 0.obs;
+  var followers = 1500.obs;
+  var following = 100.obs;
 
   // User posts data
   var userPosts = <Post>[].obs;
@@ -70,7 +70,7 @@ class ProfileController extends GetxController {
       isLoadingPosts.value = true;
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
-        // Fetch user posts from PostService
+        // Get user posts from PostService
         final allUserPosts = await _postService.getUserPosts(currentUser.uid);
         
         // Separate posts and reels
@@ -87,8 +87,6 @@ class ProfileController extends GetxController {
         
         // Update posts count
         posts.value = allUserPosts.length;
-        
-        print('[DEBUG] Loaded ${userPosts.length} posts and ${userReels.length} reels');
       }
     } catch (e) {
       print('Error loading user posts: $e');
@@ -102,8 +100,11 @@ class ProfileController extends GetxController {
   }
 
   // Refresh posts data
-  Future<void> refreshPosts() async {
-    await loadUserPosts();
+  Future<void> refreshProfile() async {
+    await Future.wait([
+      loadUserProfile(),
+      loadUserPosts(),
+    ]);
   }
 
   // Get posts for current tab

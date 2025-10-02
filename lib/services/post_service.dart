@@ -32,14 +32,22 @@ class PostService {
 
   Future<List<Post>> getUserPosts(String userId) async {
     try {
+      // Get all posts by user (no orderBy to avoid composite index requirement)
       final querySnapshot = await _firestore
           .collection(_postsCollection)
           .where('userId', isEqualTo: userId)
-          .where('isDeleted', isEqualTo: false)
-          .orderBy('createdAt', descending: true)
           .get();
 
-      return querySnapshot.docs.map((doc) => Post.fromDoc(doc)).toList();
+      // Filter out deleted posts and sort client-side
+      final posts = querySnapshot.docs
+          .map((doc) => Post.fromDoc(doc))
+          .where((post) => !post.isDeleted)
+          .toList();
+      
+      // Sort by createdAt descending (newest first) on client side  
+      posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          
+      return posts;
     } catch (e) {
       throw Exception('Failed to fetch user posts: ${e.toString()}');
     }
@@ -113,10 +121,16 @@ class PostService {
       return _firestore
           .collection(_postsCollection)
           .where('userId', isEqualTo: userId)
-          .where('isDeleted', isEqualTo: false)
-          .orderBy('createdAt', descending: true)
           .snapshots()
-          .map((snapshot) => snapshot.docs.map((doc) => Post.fromDoc(doc)).toList());
+          .map((snapshot) {
+            final posts = snapshot.docs
+                .map((doc) => Post.fromDoc(doc))
+                .where((post) => !post.isDeleted)
+                .toList();
+            // Sort by createdAt descending (newest first) on client side
+            posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            return posts;
+          });
     } catch (e) {
       throw Exception('Failed to stream user posts: ${e.toString()}');
     }
@@ -132,6 +146,110 @@ class PostService {
           .map((snapshot) => snapshot.docs.map((doc) => Post.fromDoc(doc)).toList());
     } catch (e) {
       throw Exception('Failed to stream all posts: ${e.toString()}');
+    }
+  }
+
+  // Get all posts with pagination support
+  Future<List<Post>> getAllPostsPaginated({
+    int limit = 20,
+    DocumentSnapshot? lastDocument,
+  }) async {
+    try {
+      Query query = _firestore
+          .collection(_postsCollection)
+          .where('isDeleted', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
+          .limit(limit);
+
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument);
+      }
+
+      final querySnapshot = await query.get();
+      return querySnapshot.docs.map((doc) => Post.fromDoc(doc)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch paginated posts: ${e.toString()}');
+    }
+  }
+
+  // Get all posts of a specific media type (image or video)
+  Future<List<Post>> getPostsByMediaType(String mediaType) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_postsCollection)
+          .where('isDeleted', isEqualTo: false)
+          .where('mediaType', isEqualTo: mediaType)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return querySnapshot.docs.map((doc) => Post.fromDoc(doc)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch posts by media type: ${e.toString()}');
+    }
+  }
+
+  // Get all posts with specific hashtags
+  Future<List<Post>> getPostsByHashtag(String hashtag) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_postsCollection)
+          .where('isDeleted', isEqualTo: false)
+          .where('hashtags', arrayContains: hashtag)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return querySnapshot.docs.map((doc) => Post.fromDoc(doc)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch posts by hashtag: ${e.toString()}');
+    }
+  }
+
+  // Get recent posts (last 24 hours)
+  Future<List<Post>> getRecentPosts() async {
+    try {
+      final yesterday = Timestamp.fromDate(
+        DateTime.now().subtract(const Duration(days: 1))
+      );
+
+      final querySnapshot = await _firestore
+          .collection(_postsCollection)
+          .where('isDeleted', isEqualTo: false)
+          .where('createdAt', isGreaterThan: yesterday)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return querySnapshot.docs.map((doc) => Post.fromDoc(doc)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch recent posts: ${e.toString()}');
+    }
+  }
+
+  // Get posts count for a user
+  Future<int> getUserPostsCount(String userId) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_postsCollection)
+          .where('userId', isEqualTo: userId)
+          .where('isDeleted', isEqualTo: false)
+          .get();
+
+      return querySnapshot.docs.length;
+    } catch (e) {
+      throw Exception('Failed to get user posts count: ${e.toString()}');
+    }
+  }
+
+  // Get total posts count
+  Future<int> getTotalPostsCount() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_postsCollection)
+          .where('isDeleted', isEqualTo: false)
+          .get();
+
+      return querySnapshot.docs.length;
+    } catch (e) {
+      throw Exception('Failed to get total posts count: ${e.toString()}');
     }
   }
 }
