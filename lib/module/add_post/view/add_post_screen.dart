@@ -299,6 +299,8 @@ class AddPostScreen extends GetView<AddPostController> {
                           vertical: 0,
                         ),
                         keyboardType: TextInputType.multiline,
+                        minLines: 3,
+                        maxLines: 6,
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -443,6 +445,8 @@ class AddPostScreen extends GetView<AddPostController> {
                 ),
               ),
             ),
+            // Add space at the bottom so content can scroll above the navbar
+            const SizedBox(height: 90),
           ],
         ),
       )),

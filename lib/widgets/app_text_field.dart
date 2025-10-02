@@ -14,6 +14,8 @@ class AppTextField extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final EdgeInsetsGeometry? padding;
   final ValueChanged<String>? onChanged;
+  final int? minLines;
+  final int? maxLines;
 
   const AppTextField({
     Key? key,
@@ -27,6 +29,8 @@ class AppTextField extends StatelessWidget {
     this.margin,
     this.padding,
     this.onChanged,
+    this.minLines,
+    this.maxLines,
   }) : super(key: key);
 
   @override
@@ -44,6 +48,9 @@ class AppTextField extends StatelessWidget {
         keyboardType: keyboardType,
         obscureText: isPassword && !isPasswordVisible,
         onChanged: onChanged,
+        // Only allow multiline for non-password fields
+        minLines: isPassword ? 1 : minLines,
+        maxLines: isPassword ? 1 : maxLines,
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: const TextStyle(color: AppColors.textLight),
