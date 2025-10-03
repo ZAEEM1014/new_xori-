@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import '../../storyview/binding/story_binding.dart';
 import '../../storyview/view/story_screen.dart';
 import '../controller/home_controller.dart';
-import '../../../widgets/custom_bottom_nav_bar.dart';
 import '../../../widgets/post_card.dart';
 import '../../../constants/app_assets.dart';
 
@@ -14,8 +13,9 @@ class HomePage extends GetView<HomeController> {
 
   @override
   Widget build(BuildContext context) {
-    final topBar = controller.topBar.value;
-    final statuses = controller.statuses;
+    return Obx(() {
+      final topBar = controller.topBar;
+      final statuses = controller.statuses;
 
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -180,18 +180,57 @@ class HomePage extends GetView<HomeController> {
 
             Expanded(
               child: Obx(
-                () => ListView.builder(
-                  itemCount: controller.posts.length,
-                  itemBuilder: (context, index) {
-                    final post = controller.posts[index];
-                    return PostCard(post: post);
-                  },
-                ),
+                () {
+                  if (controller.isLoading.value) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (controller.errorMessage.value.isNotEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            controller.errorMessage.value,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: controller.refreshPosts,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  
+                  if (controller.posts.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No posts available',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    );
+                  }
+                  
+                  return RefreshIndicator(
+                    onRefresh: controller.refreshPosts,
+                    child: ListView.builder(
+                      itemCount: controller.posts.length,
+                      itemBuilder: (context, index) {
+                        final post = controller.posts[index];
+                        return PostCard(post: post);
+                      },
+                    ),
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
     );
+    });
   }
 }

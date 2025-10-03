@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:xori/constants/app_colors.dart';
+import 'package:xori/models/post_model.dart';
 
 import '../constants/app_assets.dart';
 
 class PostCard extends StatelessWidget {
-  final Map<String, dynamic> post;
+  final dynamic post; // Can be either Post model or Map<String, dynamic> for backward compatibility
   const PostCard({Key? key, required this.post}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    // Check if it's a Post model or Map
+    final bool isPostModel = post is Post;
+    
     return Card(
       color: AppColors.inputBackground,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -19,37 +23,70 @@ class PostCard extends StatelessWidget {
         children: [
           // Header
           ListTile(
-
             leading: CircleAvatar(
               radius: 23,
-              backgroundImage: AssetImage(post["profilePic"]),
+              backgroundImage: isPostModel 
+                ? (post as Post).userPhotoUrl.isNotEmpty
+                  ? NetworkImage((post as Post).userPhotoUrl)
+                  : const AssetImage('assets/images/profile1.png') as ImageProvider
+                : AssetImage(post["profilePic"]),
             ),
             title: Text(
-              post["name"],
+              isPostModel ? (post as Post).username : post["name"],
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text(post["time"]),
+            subtitle: Text(
+              isPostModel 
+                ? _formatTimestamp((post as Post).createdAt.toDate())
+                : post["time"]
+            ),
             trailing: SvgPicture.asset(
-              AppAssets.favourite, // 👈 your custom favourite icon
+              AppAssets.favourite,
               height: 24,
               width: 24,
             ),
           ),
 
-          // Post Image
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10.0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: Image.asset(post["postImage"], fit: BoxFit.cover),
+          // Post Image/Media
+          if (isPostModel && (post as Post).mediaUrls.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: Image.network(
+                  (post as Post).mediaUrls.first,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      height: 200,
+                      color: Colors.grey[300],
+                      child: const Center(child: CircularProgressIndicator()),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 200,
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.error),
+                  ),
+                ),
+              ),
+            )
+          else if (!isPostModel)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: Image.asset(post["postImage"], fit: BoxFit.cover),
+              ),
             ),
-          ),
 
           // Caption
           Padding(
-            padding: const EdgeInsets.only(top: 12.0,left: 12,right: 12),
+            padding: const EdgeInsets.only(top: 12.0, left: 12, right: 12),
             child: Text(
-              post["caption"],
+              isPostModel ? (post as Post).caption : post["caption"],
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
@@ -59,12 +96,15 @@ class PostCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(
               children: [
+                // Likes
                 Row(
                   children: [
                     const Icon(Icons.favorite, color: Colors.amber),
                     const SizedBox(width: 4),
                     Text(
-                      post["likes"],
+                      isPostModel 
+                        ? (post as Post).likes.length.toString()
+                        : post["likes"],
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -72,36 +112,46 @@ class PostCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                SizedBox(width: 10,),
+                const SizedBox(width: 10),
+                // Comments
                 Row(
                   children: [
                     SvgPicture.asset(
-                      AppAssets.comment, // 👈 your custom comment icon
+                      AppAssets.comment,
                       height: 19,
                       width: 19,
-                      color:
-                          AppColors.textDark, // optional if you want to tint it
+                      color: AppColors.textDark,
                     ),
                     const SizedBox(width: 4),
-                    Text(post["comments"],style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,)),
+                    Text(
+                      isPostModel 
+                        ? (post as Post).commentCount.toString()
+                        : post["comments"],
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
-                SizedBox(width: 10,),
+                const SizedBox(width: 10),
+                // Shares (static for now)
                 Row(
                   children: [
                     SvgPicture.asset(
-                      AppAssets.share, // 👈 your custom comment icon
+                      AppAssets.share,
                       height: 24,
                       width: 24,
-                      color:
-                          AppColors.textDark, // optional if you want to tint it
+                      color: AppColors.textDark,
                     ),
                     const SizedBox(width: 4),
-                    Text(post["shares"],style: const TextStyle(
-    fontSize: 13,
-    fontWeight: FontWeight.w600,)),
+                    Text(
+                      isPostModel ? "0" : post["shares"], // Static since shares not in Post model
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -110,5 +160,20 @@ class PostCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatTimestamp(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
   }
 }
