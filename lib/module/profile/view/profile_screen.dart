@@ -152,98 +152,21 @@ class ProfileScreen extends GetView<ProfileController> {
 
                 const SizedBox(height: 16),
 
-                /// Images / Reels Section (Stream)
-                StreamBuilder<List<Post>>(
-                  stream: controller.userPostsStream,
-                  builder: (context, snapshot) {
-                    if (controller.userPostsStream == null ||
-                        snapshot.connectionState == ConnectionState.waiting) {
-                      return const Padding(
-                        padding: EdgeInsets.all(40.0),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    if (snapshot.hasError) {
-                      return Padding(
-                        padding: const EdgeInsets.all(40.0),
-                        child: Center(
-                          child: Text('Error loading posts',
-                              style: TextStyle(color: Colors.red)),
-                        ),
-                      );
-                    }
-                    final allUserPosts = snapshot.data ?? [];
-                    final posts = allUserPosts
-                        .where((p) => p.mediaType != 'video')
-                        .toList();
-                    final reels = allUserPosts
-                        .where((p) => p.mediaType == 'video')
-                        .toList();
-                    if (controller.activeTab.value == 0) {
-                      if (posts.isEmpty) {
-                        return _buildEmptyState(
-                            'No posts yet', 'Share your first post!');
-                      }
-                      final heights = [
-                        160.0,
-                        220.0,
-                        120.0,
-                        180.0,
-                        140.0,
-                        200.0,
-                        160.0,
-                        180.0
-                      ];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: MasonryGridView.count(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: posts.length,
-                          itemBuilder: (context, index) {
-                            final post = posts[index];
-                            final height = heights[index % heights.length];
-                            return _buildPostGridItem(post, height: height);
-                          },
-                        ),
-                      );
-                    } else {
-                      if (reels.isEmpty) {
-                        return _buildEmptyState(
-                            'No reels yet', 'Create your first reel!');
-                      }
-                      final heights = [
-                        200.0,
-                        180.0,
-                        220.0,
-                        160.0,
-                        140.0,
-                        240.0,
-                        180.0,
-                        200.0
-                      ];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: MasonryGridView.count(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: reels.length,
-                          itemBuilder: (context, index) {
-                            final reel = reels[index];
-                            final height = heights[index % heights.length];
-                            return _buildReelGridItem(reel, height: height);
-                          },
-                        ),
-                      );
-                    }
-                  },
-                ),
+                /// Images / Reels Section
+                Obx(() {
+                  if (controller.isLoadingPosts.value) {
+                    return const Padding(
+                      padding: EdgeInsets.all(40.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  if (controller.activeTab.value == 0) {
+                    return _buildStaggeredGridPosts();
+                  } else {
+                    return _buildStaggeredGridReels();
+                  }
+                }),
               ],
             ),
           ),

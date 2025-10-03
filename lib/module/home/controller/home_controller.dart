@@ -3,10 +3,14 @@ import 'package:xori/data/demo_top_bar.dart';
 import 'package:xori/data/demo_statuses.dart';
 import 'package:xori/services/post_service.dart';
 import 'package:xori/models/post_model.dart';
+import 'dart:async';
 
 class HomeController extends GetxController {
   final PostService _postService = PostService();
-
+  
+  // Stream subscription
+  StreamSubscription<List<Post>>? _postsStreamSubscription;
+  
   // Top bar is a single map
   final RxMap<String, dynamic> topBar = demoTopBar.obs;
 
@@ -21,25 +25,47 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchAllPosts();
+    _startPostsStream();
   }
 
-  Future<void> fetchAllPosts() async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
+  @override
+  void onClose() {
+    _postsStreamSubscription?.cancel();
+    super.onClose();
+  }
 
-      final fetchedPosts = await _postService.getAllPosts();
-      posts.assignAll(fetchedPosts);
-    } catch (e) {
-      errorMessage.value = 'Failed to load posts: ${e.toString()}';
-      print('Error fetching posts: $e');
-    } finally {
-      isLoading.value = false;
-    }
+  void _startPostsStream() {
+    isLoading.value = true;
+    errorMessage.value = '';
+    
+    _postsStreamSubscription = _postService.streamAllPosts().listen(
+      (List<Post> fetchedPosts) {
+        try {
+          posts.assignAll(fetchedPosts);
+          errorMessage.value = '';
+        } catch (e) {
+          errorMessage.value = 'Failed to process posts: ${e.toString()}';
+          print('Error processing posts: $e');
+        } finally {
+          isLoading.value = false;
+        }
+      },
+      onError: (error) {
+        errorMessage.value = 'Failed to load posts: ${error.toString()}';
+        print('Error in posts stream: $error');
+        isLoading.value = false;
+      },
+    );
   }
 
   Future<void> refreshPosts() async {
-    await fetchAllPosts();
+    // Restart the stream for refresh
+    _postsStreamSubscription?.cancel();
+    _startPostsStream();
+  }
+
+  // Backward compatibility method
+  Future<void> fetchAllPosts() async {
+    _startPostsStream();
   }
 }
