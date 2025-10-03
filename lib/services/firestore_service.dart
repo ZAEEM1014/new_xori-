@@ -2,6 +2,41 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:xori/models/user_model.dart';
 
 class FirestoreService {
+  // Stream user data by uid for real-time updates
+  Stream<UserModel?> streamUserByUid(String uid) {
+    try {
+      if (uid.isEmpty) {
+        print(
+            '[DEBUG] FirestoreService: Empty uid provided to streamUserByUid');
+        return Stream.value(null);
+      }
+
+      return _firestore
+          .collection(_userCollection)
+          .doc(uid)
+          .snapshots()
+          .map((doc) {
+        try {
+          if (doc.exists && doc.data() != null) {
+            return UserModel.fromJson(doc.data()!);
+          }
+          return null;
+        } catch (e) {
+          print(
+              '[DEBUG] FirestoreService: Error parsing user data for uid $uid: $e');
+          return null;
+        }
+      }).handleError((error) {
+        print(
+            '[DEBUG] FirestoreService: Error in user stream for uid $uid: $error');
+      });
+    } catch (e) {
+      print(
+          '[DEBUG] FirestoreService: Error setting up user stream for uid $uid: $e');
+      return Stream.value(null);
+    }
+  }
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _userCollection = 'users';
 
@@ -73,7 +108,7 @@ class FirestoreService {
           .orderBy('timestamp', descending: true)
           .limit(limit)
           .get();
-      
+
       return result.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         data['id'] = doc.id;
@@ -92,7 +127,7 @@ class FirestoreService {
           .where('userId', isEqualTo: userId)
           .orderBy('timestamp', descending: true)
           .get();
-      
+
       return result.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         data['id'] = doc.id;

@@ -11,7 +11,6 @@ import 'package:xori/routes/app_pages.dart';
 import 'package:xori/routes/app_routes.dart';
 import 'package:xori/services/onboarding_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:xori/module/xori_userprofile/controller/xori_userprofile_controller.dart';
 
 void main() async {
   try {
@@ -42,8 +41,6 @@ void main() async {
   Get.put(AuthController(), permanent: true);
   Get.put(HomeController(), permanent: true);
   Get.put(ProfileController(), permanent: true);
-  // Initialize xori user profile controller
-  Get.put(XoriUserProfileController(), permanent: true);
   runApp(const MyApp());
 }
 
