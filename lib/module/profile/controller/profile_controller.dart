@@ -16,24 +16,26 @@ class ProfileController extends GetxController {
   var bio = "".obs;
   var profileImageUrl = "".obs;
   var isLoading = true.obs;
-  var isLoadingPosts = true.obs;
 
   // Real user statistics
   var posts = 0.obs;
   var followers = 1500.obs;
   var following = 100.obs;
 
-  // User posts data
-  var userPosts = <Post>[].obs;
-  var userReels = <Post>[].obs;
+  // User posts data (stream)
+  RxList<Post> userPosts = <Post>[].obs;
+  RxList<Post> userReels = <Post>[].obs;
+  var isLoadingPosts = false.obs;
 
   var activeTab = 0.obs; // 0 = Posts, 1 = Reels
+
+  Stream<List<Post>>? userPostsStream;
 
   @override
   void onInit() {
     super.onInit();
     loadUserProfile();
-    loadUserPosts();
+    setupUserPostsStream();
   }
 
   Future<void> loadUserProfile() async {
@@ -65,33 +67,17 @@ class ProfileController extends GetxController {
     }
   }
 
-  Future<void> loadUserPosts() async {
-    try {
-      isLoadingPosts.value = true;
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        // Get user posts from PostService
-        final allUserPosts = await _postService.getUserPosts(currentUser.uid);
-        
-        // Separate posts and reels
-        userPosts.clear();
-        userReels.clear();
-        
-        for (final post in allUserPosts) {
-          if (post.mediaType == 'video') {
-            userReels.add(post);
-          } else {
-            userPosts.add(post);
-          }
-        }
-        
-        // Update posts count
+  void setupUserPostsStream() {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      userPostsStream = _postService.streamUserPosts(currentUser.uid);
+      userPostsStream!.listen((allUserPosts) {
+        userPosts.value =
+            allUserPosts.where((p) => p.mediaType != 'video').toList();
+        userReels.value =
+            allUserPosts.where((p) => p.mediaType == 'video').toList();
         posts.value = allUserPosts.length;
-      }
-    } catch (e) {
-      print('Error loading user posts: $e');
-    } finally {
-      isLoadingPosts.value = false;
+      });
     }
   }
 
@@ -99,15 +85,11 @@ class ProfileController extends GetxController {
     activeTab.value = index;
   }
 
-  // Refresh posts data
   Future<void> refreshProfile() async {
-    await Future.wait([
-      loadUserProfile(),
-      loadUserPosts(),
-    ]);
+    await loadUserProfile();
+    // No need to reload posts, stream will update automatically
   }
 
-  // Get posts for current tab
   List<Post> get currentTabPosts {
     return activeTab.value == 0 ? userPosts : userReels;
   }

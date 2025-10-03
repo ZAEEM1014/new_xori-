@@ -21,153 +21,230 @@ class ProfileScreen extends GetView<ProfileController> {
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
-            children: [
-              /// Settings Button
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 20,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      onTap: () => Get.toNamed('/settings'),
-                      child: Icon(Icons.settings,
-                          color: AppColors.primary, size: 28),
-                    ),
-                  ],
-                ),
-              ),
-
-              /// Profile Info
-              Column(
-                children: [
-                  Obx(() => CircleAvatar(
-                        radius: 50,
-                        backgroundImage:
-                            controller.profileImageUrl.value.isNotEmpty
-                                ? NetworkImage(controller.profileImageUrl.value)
-                                : const AssetImage(AppAssets.ellipse75)
-                                    as ImageProvider,
-                      )),
-                  const SizedBox(height: 12),
-                  Obx(
-                    () => Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          controller.name.value,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textDark,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.verified,
-                          color: Colors.blue,
-                          size: 18,
-                        ),
-                      ],
-                    ),
+              children: [
+                /// Settings Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 20,
                   ),
-                  const SizedBox(height: 6),
-                  Obx(
-                    () => Text(
-                      controller.bio.value,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              /// Stats
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30),
-                child: Obx(
-                  () => Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      _StatItem(
-                        title: controller.posts.value.toString(),
-                        subtitle: "Posts",
-                      ),
-                      _StatItem(
-                        title: "${controller.followers.value}",
-                        subtitle: "Followers",
-                      ),
-                      _StatItem(
-                        title: controller.following.value.toString(),
-                        subtitle: "Following",
+                      GestureDetector(
+                        onTap: () => Get.toNamed('/settings'),
+                        child: Icon(Icons.settings,
+                            color: AppColors.primary, size: 28),
                       ),
                     ],
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 20),
-
-              /// Edit Profile Button
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: GradientButton(
-                  text: "Edit Profile",
-                  onPressed: () {
-                    // TODO: Implement edit profile action
-                  },
-                  height: 44,
-                  borderRadius: 10,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              /// Tabs (SVG icons)
-              Obx(
-                () => Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                /// Profile Info
+                Column(
                   children: [
-                    _buildSvgTabIcon(
-                      AppAssets.gridTabIcon,
-                      controller.activeTab.value == 0,
-                      () => controller.changeTab(0),
+                    Obx(() => CircleAvatar(
+                          radius: 50,
+                          backgroundImage: controller
+                                  .profileImageUrl.value.isNotEmpty
+                              ? NetworkImage(controller.profileImageUrl.value)
+                              : const AssetImage(AppAssets.ellipse75)
+                                  as ImageProvider,
+                        )),
+                    const SizedBox(height: 12),
+                    Obx(
+                      () => Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            controller.name.value,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.verified,
+                            color: Colors.blue,
+                            size: 18,
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 30),
-                    _buildSvgTabIcon(
-                      AppAssets.reels,
-                      controller.activeTab.value == 1,
-                      () => controller.changeTab(1),
+                    const SizedBox(height: 6),
+                    Obx(
+                      () => Text(
+                        controller.bio.value,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textDark,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-              /// Images / Reels Section
-              Obx(() {
-                if (controller.isLoadingPosts.value) {
-                  return const Padding(
-                    padding: EdgeInsets.all(40.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                
-                if (controller.activeTab.value == 0) {
-                  return _buildStaggeredGridPosts();
-                } else {
-                  return _buildStaggeredGridReels();
-                }
-              }),
-            ],
+                /// Stats
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Obx(
+                    () => Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _StatItem(
+                          title: controller.posts.value.toString(),
+                          subtitle: "Posts",
+                        ),
+                        _StatItem(
+                          title: "${controller.followers.value}",
+                          subtitle: "Followers",
+                        ),
+                        _StatItem(
+                          title: controller.following.value.toString(),
+                          subtitle: "Following",
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                /// Edit Profile Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: GradientButton(
+                    text: "Edit Profile",
+                    onPressed: () {
+                      // TODO: Implement edit profile action
+                    },
+                    height: 44,
+                    borderRadius: 10,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                /// Tabs (SVG icons)
+                Obx(
+                  () => Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildSvgTabIcon(
+                        AppAssets.gridTabIcon,
+                        controller.activeTab.value == 0,
+                        () => controller.changeTab(0),
+                      ),
+                      const SizedBox(width: 30),
+                      _buildSvgTabIcon(
+                        AppAssets.reels,
+                        controller.activeTab.value == 1,
+                        () => controller.changeTab(1),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                /// Images / Reels Section (Stream)
+                StreamBuilder<List<Post>>(
+                  stream: controller.userPostsStream,
+                  builder: (context, snapshot) {
+                    if (controller.userPostsStream == null ||
+                        snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.all(40.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return Padding(
+                        padding: const EdgeInsets.all(40.0),
+                        child: Center(
+                          child: Text('Error loading posts',
+                              style: TextStyle(color: Colors.red)),
+                        ),
+                      );
+                    }
+                    final allUserPosts = snapshot.data ?? [];
+                    final posts = allUserPosts
+                        .where((p) => p.mediaType != 'video')
+                        .toList();
+                    final reels = allUserPosts
+                        .where((p) => p.mediaType == 'video')
+                        .toList();
+                    if (controller.activeTab.value == 0) {
+                      if (posts.isEmpty) {
+                        return _buildEmptyState(
+                            'No posts yet', 'Share your first post!');
+                      }
+                      final heights = [
+                        160.0,
+                        220.0,
+                        120.0,
+                        180.0,
+                        140.0,
+                        200.0,
+                        160.0,
+                        180.0
+                      ];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: MasonryGridView.count(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: posts.length,
+                          itemBuilder: (context, index) {
+                            final post = posts[index];
+                            final height = heights[index % heights.length];
+                            return _buildPostGridItem(post, height: height);
+                          },
+                        ),
+                      );
+                    } else {
+                      if (reels.isEmpty) {
+                        return _buildEmptyState(
+                            'No reels yet', 'Create your first reel!');
+                      }
+                      final heights = [
+                        200.0,
+                        180.0,
+                        220.0,
+                        160.0,
+                        140.0,
+                        240.0,
+                        180.0,
+                        200.0
+                      ];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: MasonryGridView.count(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: reels.length,
+                          itemBuilder: (context, index) {
+                            final reel = reels[index];
+                            final height = heights[index % heights.length];
+                            return _buildReelGridItem(reel, height: height);
+                          },
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
             ),
           ),
         ),

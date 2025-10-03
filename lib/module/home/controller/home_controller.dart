@@ -6,7 +6,7 @@ import 'package:xori/models/post_model.dart';
 
 class HomeController extends GetxController {
   final PostService _postService = PostService();
-  
+
   // Top bar is a single map
   final RxMap<String, dynamic> topBar = demoTopBar.obs;
 
@@ -28,7 +28,7 @@ class HomeController extends GetxController {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-      
+
       final fetchedPosts = await _postService.getAllPosts();
       posts.assignAll(fetchedPosts);
     } catch (e) {

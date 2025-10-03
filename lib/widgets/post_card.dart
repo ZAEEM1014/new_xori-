@@ -6,14 +6,15 @@ import 'package:xori/models/post_model.dart';
 import '../constants/app_assets.dart';
 
 class PostCard extends StatelessWidget {
-  final dynamic post; // Can be either Post model or Map<String, dynamic> for backward compatibility
+  final dynamic
+      post; // Can be either Post model or Map<String, dynamic> for backward compatibility
   const PostCard({Key? key, required this.post}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     // Check if it's a Post model or Map
     final bool isPostModel = post is Post;
-    
+
     return Card(
       color: AppColors.inputBackground,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -25,21 +26,20 @@ class PostCard extends StatelessWidget {
           ListTile(
             leading: CircleAvatar(
               radius: 23,
-              backgroundImage: isPostModel 
-                ? (post as Post).userPhotoUrl.isNotEmpty
-                  ? NetworkImage((post as Post).userPhotoUrl)
-                  : const AssetImage('assets/images/profile1.png') as ImageProvider
-                : AssetImage(post["profilePic"]),
+              backgroundImage: isPostModel
+                  ? (post as Post).userPhotoUrl.isNotEmpty
+                      ? NetworkImage((post as Post).userPhotoUrl)
+                      : const AssetImage('assets/images/profile1.png')
+                          as ImageProvider
+                  : AssetImage(post["profilePic"]),
             ),
             title: Text(
               isPostModel ? (post as Post).username : post["name"],
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text(
-              isPostModel 
+            subtitle: Text(isPostModel
                 ? _formatTimestamp((post as Post).createdAt.toDate())
-                : post["time"]
-            ),
+                : post["time"]),
             trailing: SvgPicture.asset(
               AppAssets.favourite,
               height: 24,
@@ -102,9 +102,9 @@ class PostCard extends StatelessWidget {
                     const Icon(Icons.favorite, color: Colors.amber),
                     const SizedBox(width: 4),
                     Text(
-                      isPostModel 
-                        ? (post as Post).likes.length.toString()
-                        : post["likes"],
+                      isPostModel
+                          ? (post as Post).likes.length.toString()
+                          : post["likes"],
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -124,9 +124,9 @@ class PostCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      isPostModel 
-                        ? (post as Post).commentCount.toString()
-                        : post["comments"],
+                      isPostModel
+                          ? (post as Post).commentCount.toString()
+                          : post["comments"],
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -146,7 +146,10 @@ class PostCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      isPostModel ? "0" : post["shares"], // Static since shares not in Post model
+                      isPostModel
+                          ? "0"
+                          : post[
+                              "shares"], // Static since shares not in Post model
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
