@@ -46,6 +46,8 @@ dependencies:
   cloudinary_sdk: ^5.0.0+1
   shared_preferences: ^2.5.3
 
+  shimmer: ^3.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -7,6 +7,7 @@ import '../../storyview/view/story_screen.dart';
 import '../controller/home_controller.dart';
 import '../../../widgets/post_card.dart';
 import '../../../constants/app_assets.dart';
+import '../../../widgets/post_shimmer.dart';
 
 class HomePage extends GetView<HomeController> {
   const HomePage({Key? key}) : super(key: key);
@@ -184,7 +185,11 @@ class HomePage extends GetView<HomeController> {
                 child: Obx(
                   () {
                     if (controller.isLoading.value) {
-                      return const Center(child: CircularProgressIndicator());
+                      // Show shimmer effect for posts section only
+                      return ListView.builder(
+                        itemCount: 6,
+                        itemBuilder: (context, index) => const PostShimmer(),
+                      );
                     }
 
                     if (controller.errorMessage.value.isNotEmpty) {
@@ -219,7 +224,9 @@ class HomePage extends GetView<HomeController> {
                     return RefreshIndicator(
                       onRefresh: controller.refreshPosts,
                       child: ListView.builder(
-                        itemCount: controller.posts.length,
+                        itemCount: controller.posts.length > 10
+                            ? 10
+                            : controller.posts.length,
                         itemBuilder: (context, index) {
                           final post = controller.posts[index];
                           return PostCard(post: post);

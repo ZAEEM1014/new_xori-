@@ -55,7 +55,7 @@ class ProfileController extends GetxController {
 
   void _startUserStream(String userId) {
     isLoading.value = true;
-    
+
     _userStreamSubscription = FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
@@ -88,14 +88,14 @@ class ProfileController extends GetxController {
 
   void _startPostsStream(String userId) {
     isLoadingPosts.value = true;
-    
+
     _postsStreamSubscription = _postService.streamUserPosts(userId).listen(
       (List<Post> allUserPosts) {
         try {
           // Separate posts and reels
           userPosts.clear();
           userReels.clear();
-          
+
           for (final post in allUserPosts) {
             if (post.mediaType == 'video') {
               userReels.add(post);
@@ -103,7 +103,7 @@ class ProfileController extends GetxController {
               userPosts.add(post);
             }
           }
-          
+
           // Update posts count
           posts.value = allUserPosts.length;
         } catch (e) {
@@ -117,7 +117,9 @@ class ProfileController extends GetxController {
         isLoadingPosts.value = false;
       },
     );
-  }  void changeTab(int index) {
+  }
+
+  void changeTab(int index) {
     activeTab.value = index;
   }
 
@@ -128,7 +130,7 @@ class ProfileController extends GetxController {
       // Cancel existing streams
       _userStreamSubscription?.cancel();
       _postsStreamSubscription?.cancel();
-      
+
       // Restart streams
       _startUserStream(currentUser.uid);
       _startPostsStream(currentUser.uid);

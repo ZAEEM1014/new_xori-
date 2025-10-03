@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:xori/constants/app_colors.dart';
 import 'package:xori/models/post_model.dart';
-
+import 'package:shimmer/shimmer.dart';
 import '../constants/app_assets.dart';
 
 class PostCard extends StatelessWidget {
@@ -59,10 +59,14 @@ class PostCard extends StatelessWidget {
                   width: double.infinity,
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
-                    return Container(
-                      height: 200,
-                      color: Colors.grey[300],
-                      child: const Center(child: CircularProgressIndicator()),
+                    return Shimmer.fromColors(
+                      baseColor: Colors.grey[300]!,
+                      highlightColor: Colors.grey[100]!,
+                      child: Container(
+                        height: 200,
+                        width: double.infinity,
+                        color: Colors.white,
+                      ),
                     );
                   },
                   errorBuilder: (context, error, stackTrace) => Container(

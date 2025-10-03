@@ -7,10 +7,10 @@ import 'dart:async';
 
 class HomeController extends GetxController {
   final PostService _postService = PostService();
-  
+
   // Stream subscription
   StreamSubscription<List<Post>>? _postsStreamSubscription;
-  
+
   // Top bar is a single map
   final RxMap<String, dynamic> topBar = demoTopBar.obs;
 
@@ -37,7 +37,7 @@ class HomeController extends GetxController {
   void _startPostsStream() {
     isLoading.value = true;
     errorMessage.value = '';
-    
+
     _postsStreamSubscription = _postService.streamAllPosts().listen(
       (List<Post> fetchedPosts) {
         try {
