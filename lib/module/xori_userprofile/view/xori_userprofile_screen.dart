@@ -6,6 +6,7 @@ import '../../../widgets/gradient_button.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../controller/xori_userprofile_controller.dart';
+import '../../../models/post_model.dart';
 
 class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
   const XoriUserProfileScreen({super.key});
@@ -237,52 +238,104 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
   }
 
   Widget _buildStaggeredGridPosts() {
-    try {
-      final images = [
-        AppAssets.searchedImg1,
-        AppAssets.searchedImg2,
-        AppAssets.searchedImg3,
-        AppAssets.searchedImg4,
-        AppAssets.searchedImg5,
-      ];
-      final heights = [160.0, 220.0, 120.0, 180.0, 140.0];
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: MasonryGridView.count(
-          crossAxisCount: 2,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: images.length,
-          itemBuilder: (context, index) {
-            try {
-              return _gridImage(images[index], height: heights[index]);
-            } catch (e) {
-              print(
-                  '[DEBUG] XoriUserProfileScreen: Error building grid item: $e');
-              return Container(
-                height: heights[index],
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.error_outline, color: Colors.grey),
-              );
-            }
-          },
+    return StreamBuilder<List<Post>>(
+      stream: controller.userPostsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32.0),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          print(
+              '[DEBUG] XoriUserProfileScreen: Error loading posts: \\${snapshot.error}');
+          return const SizedBox(
+            height: 200,
+            child: Center(
+              child: Text('Unable to load posts',
+                  style: TextStyle(color: Colors.grey)),
+            ),
+          );
+        }
+        final posts = snapshot.data ?? [];
+        if (posts.isEmpty) {
+          return const SizedBox(
+            height: 200,
+            child: Center(
+              child: Text('No posts yet', style: TextStyle(color: Colors.grey)),
+            ),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: MasonryGridView.count(
+            crossAxisCount: 2,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: posts.length,
+            itemBuilder: (context, index) {
+              final post = posts[index];
+              // Use the first media URL if available, else show a placeholder
+              final imageUrl =
+                  (post.mediaUrls.isNotEmpty) ? post.mediaUrls.first : null;
+              return _postGridImage(imageUrl, height: 160 + (index % 3) * 40.0);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _postGridImage(String? imageUrl, {double height = 160}) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Container(
+        height: height,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(16),
         ),
-      );
-    } catch (e) {
-      print('[DEBUG] XoriUserProfileScreen: Error building posts grid: $e');
-      return const SizedBox(
-        height: 200,
-        child: Center(
-          child: Text('Unable to load posts',
-              style: TextStyle(color: Colors.grey)),
-        ),
+        child: const Icon(Icons.image_not_supported, color: Colors.grey),
       );
     }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        height: height,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          print(
+              '[DEBUG] XoriUserProfileScreen: Error loading image $imageUrl: $error');
+          return Container(
+            height: height,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.image_not_supported, color: Colors.grey),
+          );
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            height: height,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child:
+                const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildStaggeredGridReels() {

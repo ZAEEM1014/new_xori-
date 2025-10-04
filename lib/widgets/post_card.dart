@@ -212,17 +212,19 @@ class PostCard extends StatelessWidget {
   void _handleProfileTap(BuildContext context, String tappedUserUid) {
     final String? currentUserUid = FirebaseAuth.instance.currentUser?.uid;
     if (tappedUserUid == currentUserUid) {
-      // Switch to profile tab (index 4) in NavbarWrapper
-      try {
+      // Always navigate to navwrapper if not already there
+      if (Get.currentRoute != AppRoutes.navwrapper) {
+        Get.toNamed(AppRoutes.navwrapper)?.then((_) {
+          // After navigation, switch to profile tab
+          Future.delayed(Duration.zero, () {
+            final navController = Get.find<NavbarWrapperController>();
+            navController.changeTab(4);
+          });
+        });
+      } else {
+        // Already on navwrapper, just switch tab
         final navController = Get.find<NavbarWrapperController>();
         navController.changeTab(4);
-      } catch (e) {
-        // If not found, fallback to navigation
-        Get.toNamed(AppRoutes.navwrapper);
-      }
-      // Ensure we are on the navwrapper route
-      if (Get.currentRoute != AppRoutes.navwrapper) {
-        Get.toNamed(AppRoutes.navwrapper);
       }
     } else {
       Get.toNamed(AppRoutes.xoriUserProfile,

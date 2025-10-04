@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:xori/models/user_model.dart';
 
 class FirestoreService {
+  // Stream posts for a given user uid, sorted by timestamp descending
   // Stream user data by uid for real-time updates
   Stream<UserModel?> streamUserByUid(String uid) {
     try {
@@ -90,6 +91,26 @@ class FirestoreService {
   }
 
   // Posts collection methods
+  // Stream posts for a given user uid, sorted by timestamp descending
+  Stream<List<Map<String, dynamic>>> streamUserPostsByUid(String uid) {
+    try {
+      return _firestore
+          .collection('posts')
+          .where('userId', isEqualTo: uid)
+          .orderBy('timestamp', descending: true)
+          .snapshots()
+          .map((snapshot) => snapshot.docs.map((doc) {
+                final data = doc.data();
+                data['id'] = doc.id;
+                return data;
+              }).toList());
+    } catch (e) {
+      print(
+          '[DEBUG] FirestoreService: Error streaming user posts for uid $uid: $e');
+      return Stream.value([]);
+    }
+  }
+
   Future<void> createPost(Map<String, dynamic> postData) async {
     try {
       print('[DEBUG] FirestoreService: Creating post with data: $postData');

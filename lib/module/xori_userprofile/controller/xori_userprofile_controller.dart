@@ -1,6 +1,9 @@
 import 'package:get/get.dart';
 import '../../../models/user_model.dart';
+
 import '../../../services/firestore_service.dart';
+import '../../../services/post_service.dart';
+import '../../../models/post_model.dart';
 
 class XoriUserProfileController extends GetxController {
   final String uid;
@@ -13,6 +16,9 @@ class XoriUserProfileController extends GetxController {
   var activeTab = 0.obs; // 0 = Posts, 1 = Tagged
 
   XoriUserProfileController(this.uid);
+
+  // Stream of posts for this user (from PostService)
+  Stream<List<Post>> get userPostsStream => PostService().streamUserPosts(uid);
 
   @override
   void onInit() {
