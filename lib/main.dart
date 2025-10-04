@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:xori/module/add_story/controller/add_story_controller.dart';
 import 'package:xori/module/auth/controller/auth_controller.dart';
 import 'package:xori/module/home/controller/home_controller.dart';
 import 'package:xori/module/profile/controller/profile_controller.dart';
@@ -41,6 +42,7 @@ void main() async {
   Get.put(AuthController(), permanent: true);
   Get.put(HomeController(), permanent: true);
   Get.put(ProfileController(), permanent: true);
+  Get.put(AddStoryController(), permanent: true);
   runApp(const MyApp());
 }
 
