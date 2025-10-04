@@ -90,10 +90,11 @@ class AuthService {
         await user.sendEmailVerification();
         print('[DEBUG] AuthService: Email verification sent successfully');
       } catch (verificationError) {
-        print('[DEBUG] AuthService: Email verification failed: $verificationError');
+        print(
+            '[DEBUG] AuthService: Email verification failed: $verificationError');
         // Don't fail signup if verification email fails to send
       }
-      
+
       return (userCredential, null);
     } catch (e, st) {
       print('[DEBUG] AuthService: Exception: ' + e.toString());
@@ -116,9 +117,12 @@ class AuthService {
       }
       // Check email verification
       if (!user.emailVerified) {
-        return (null, "Please verify your email before logging in. Check your inbox for a verification email.");
+        return (
+          null,
+          "Please verify your email before logging in. Check your inbox for a verification email."
+        );
       }
-      
+
       return (userCredential, null);
     } catch (e) {
       return (null, e.toString());

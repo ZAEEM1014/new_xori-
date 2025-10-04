@@ -37,8 +37,8 @@ class LoginView extends GetView<AuthController> {
                     hintText: 'Enter your email',
                     keyboardType: TextInputType.emailAddress,
                     onChanged: (value) => controller.updateLoginEmail(value),
-                    errorText: controller.loginEmailError.value.isEmpty 
-                        ? null 
+                    errorText: controller.loginEmailError.value.isEmpty
+                        ? null
                         : controller.loginEmailError.value,
                   )),
               const SizedBox(height: 12),
@@ -49,8 +49,8 @@ class LoginView extends GetView<AuthController> {
                     isPasswordVisible: controller.isLoginPasswordVisible.value,
                     onTogglePassword: controller.toggleLoginPasswordVisibility,
                     onChanged: (value) => controller.updateLoginPassword(value),
-                    errorText: controller.loginPasswordError.value.isEmpty 
-                        ? null 
+                    errorText: controller.loginPasswordError.value.isEmpty
+                        ? null
                         : controller.loginPasswordError.value,
                   )),
               Align(

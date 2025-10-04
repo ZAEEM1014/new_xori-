@@ -84,25 +84,24 @@ class AuthController extends GetxController {
   }
 
   void _setupFormValidation() {
-    // Sign up form validation
-    ever(signUpUsername, (_) => _validateSignUpForm());
-    ever(signUpEmail, (_) => _validateSignUpForm());
-    ever(signUpPassword, (_) => _validateSignUpForm());
-    ever(signUpConfirmPassword, (_) => _validateSignUpForm());
-    ever(selectedTraits, (_) => _validateSignUpForm());
-    ever(profileImage, (_) => _validateSignUpForm());
+    // Remove real-time validation - only validate on button click
+    // Basic form completeness check without showing errors
+    ever(signUpUsername, (_) => _checkFormCompleteness());
+    ever(signUpEmail, (_) => _checkFormCompleteness());
+    ever(signUpPassword, (_) => _checkFormCompleteness());
+    ever(signUpConfirmPassword, (_) => _checkFormCompleteness());
+    ever(selectedTraits, (_) => _checkFormCompleteness());
+    ever(profileImage, (_) => _checkFormCompleteness());
 
-    // Login form validation
-    ever(loginEmail, (_) => _validateLoginForm());
-    ever(loginPassword, (_) => _validateLoginForm());
+    // Login form completeness check
+    ever(loginEmail, (_) => _checkLoginFormCompleteness());
+    ever(loginPassword, (_) => _checkLoginFormCompleteness());
   }
 
   void _validateSignUpForm() {
-    // Clear errors first
-    _clearValidationErrors();
-    
+    // Don't clear errors - we want to show them when validation is triggered
     bool isValid = true;
-    
+
     // Username validation
     if (signUpUsername.value.trim().isEmpty) {
       usernameError.value = 'Username is required';
@@ -110,11 +109,13 @@ class AuthController extends GetxController {
     } else if (signUpUsername.value.trim().length < 3) {
       usernameError.value = 'Username must be at least 3 characters';
       isValid = false;
-    } else if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(signUpUsername.value.trim())) {
-      usernameError.value = 'Username can only contain letters, numbers, and underscores';
+    } else if (!RegExp(r'^[a-zA-Z0-9_]+$')
+        .hasMatch(signUpUsername.value.trim())) {
+      usernameError.value =
+          'Username can only contain letters, numbers, and underscores';
       isValid = false;
     }
-    
+
     // Email validation
     if (signUpEmail.value.trim().isEmpty) {
       emailError.value = 'Email is required';
@@ -123,7 +124,7 @@ class AuthController extends GetxController {
       emailError.value = 'Please enter a valid email address';
       isValid = false;
     }
-    
+
     // Password validation
     if (signUpPassword.value.isEmpty) {
       passwordError.value = 'Password is required';
@@ -131,11 +132,13 @@ class AuthController extends GetxController {
     } else if (signUpPassword.value.length < 6) {
       passwordError.value = 'Password must be at least 6 characters';
       isValid = false;
-    } else if (!RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)').hasMatch(signUpPassword.value)) {
-      passwordError.value = 'Password must contain at least one letter and one number';
+    } else if (!RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)')
+        .hasMatch(signUpPassword.value)) {
+      passwordError.value =
+          'Password must contain at least one letter and one number';
       isValid = false;
     }
-    
+
     // Confirm password validation
     if (signUpConfirmPassword.value.isEmpty) {
       confirmPasswordError.value = 'Please confirm your password';
@@ -144,26 +147,23 @@ class AuthController extends GetxController {
       confirmPasswordError.value = 'Passwords do not match';
       isValid = false;
     }
-    
+
     // Additional validations
     if (selectedTraits.length != 3) {
       isValid = false;
     }
-    
+
     if (profileImage.value == null) {
       isValid = false;
     }
-    
+
     isSignUpFormValid.value = isValid;
   }
 
   void _validateLoginForm() {
-    // Clear login errors first
-    loginEmailError.value = '';
-    loginPasswordError.value = '';
-    
+    // Don't clear errors - we want to show them when validation is triggered
     bool isValid = true;
-    
+
     // Email validation
     if (loginEmail.value.trim().isEmpty) {
       loginEmailError.value = 'Email is required';
@@ -172,13 +172,13 @@ class AuthController extends GetxController {
       loginEmailError.value = 'Please enter a valid email address';
       isValid = false;
     }
-    
+
     // Password validation
     if (loginPassword.value.isEmpty) {
       loginPasswordError.value = 'Password is required';
       isValid = false;
     }
-    
+
     isLoginFormValid.value = isValid;
   }
 
@@ -187,6 +187,36 @@ class AuthController extends GetxController {
     emailError.value = '';
     passwordError.value = '';
     confirmPasswordError.value = '';
+  }
+
+  // Check form completeness without showing validation errors
+  void _checkFormCompleteness() {
+    isSignUpFormValid.value = signUpUsername.value.trim().isNotEmpty &&
+        signUpEmail.value.trim().isNotEmpty &&
+        signUpPassword.value.isNotEmpty &&
+        signUpConfirmPassword.value.isNotEmpty &&
+        selectedTraits.length == 3 &&
+        profileImage.value != null;
+  }
+
+  void _checkLoginFormCompleteness() {
+    isLoginFormValid.value = loginEmail.value.trim().isNotEmpty &&
+        loginPassword.value.isNotEmpty;
+  }
+
+  // Check if signup form is valid after validation (used on button click)
+  bool _isSignUpFormValidOnSubmit() {
+    return usernameError.value.isEmpty &&
+        emailError.value.isEmpty &&
+        passwordError.value.isEmpty &&
+        confirmPasswordError.value.isEmpty &&
+        selectedTraits.length == 3 &&
+        profileImage.value != null;
+  }
+
+  // Check if login form is valid after validation (used on button click)
+  bool _isLoginFormValidOnSubmit() {
+    return loginEmailError.value.isEmpty && loginPasswordError.value.isEmpty;
   }
 
   // Handle authentication state changes
@@ -223,13 +253,41 @@ class AuthController extends GetxController {
       isSignUpConfirmPasswordVisible.toggle();
   void toggleLoginPasswordVisibility() => isLoginPasswordVisible.toggle();
 
-  void updateSignUpUsername(String value) => signUpUsername.value = value;
-  void updateSignUpEmail(String value) => signUpEmail.value = value;
-  void updateSignUpPassword(String value) => signUpPassword.value = value;
-  void updateSignUpConfirmPassword(String value) =>
-      signUpConfirmPassword.value = value;
-  void updateLoginEmail(String value) => loginEmail.value = value;
-  void updateLoginPassword(String value) => loginPassword.value = value;
+  void updateSignUpUsername(String value) {
+    signUpUsername.value = value;
+    // Clear validation errors when user starts typing
+    usernameError.value = '';
+  }
+  
+  void updateSignUpEmail(String value) {
+    signUpEmail.value = value;
+    // Clear validation errors when user starts typing
+    emailError.value = '';
+  }
+  
+  void updateSignUpPassword(String value) {
+    signUpPassword.value = value;
+    // Clear validation errors when user starts typing
+    passwordError.value = '';
+  }
+  
+  void updateSignUpConfirmPassword(String value) {
+    signUpConfirmPassword.value = value;
+    // Clear validation errors when user starts typing
+    confirmPasswordError.value = '';
+  }
+  
+  void updateLoginEmail(String value) {
+    loginEmail.value = value;
+    // Clear validation errors when user starts typing
+    loginEmailError.value = '';
+  }
+  
+  void updateLoginPassword(String value) {
+    loginPassword.value = value;
+    // Clear validation errors when user starts typing
+    loginPasswordError.value = '';
+  }
 
   // Personality traits management
   void toggleTrait(String trait) {
@@ -284,10 +342,13 @@ class AuthController extends GetxController {
   Future<void> signUp() async {
     if (isLoading.value) return;
 
-    // Validate form first
-    _validateSignUpForm();
+    // Clear previous messages
+    _clearMessages();
     
-    if (!isSignUpFormValid.value) {
+    // Validate form only when button is clicked
+    _validateSignUpForm();
+
+    if (!_isSignUpFormValidOnSubmit()) {
       _setError('Please correct all errors and fill all required fields');
       return;
     }
@@ -326,10 +387,10 @@ class AuthController extends GetxController {
       if (credential != null && error == null) {
         _setSuccess('Account created successfully!');
         _clearSignUpForm();
-        
+
         // Show email verification dialog
         await _showEmailVerificationDialog();
-        
+
         Get.offAllNamed('/login');
       } else {
         _setError(error ?? 'Sign up failed. Please try again.');
@@ -348,10 +409,13 @@ class AuthController extends GetxController {
   Future<void> signIn() async {
     if (isLoading.value) return;
 
-    // Validate form first
-    _validateLoginForm();
+    // Clear previous messages
+    _clearMessages();
     
-    if (!isLoginFormValid.value) {
+    // Validate form only when button is clicked
+    _validateLoginForm();
+
+    if (!_isLoginFormValidOnSubmit()) {
       _setError('Please correct all errors in the form');
       return;
     }

@@ -119,9 +119,10 @@ class SignupView extends GetView<AuthController> {
               Obx(() => AppTextField(
                     controller: TextEditingController(),
                     hintText: 'Username',
-                    onChanged: (value) => controller.updateSignUpUsername(value),
-                    errorText: controller.usernameError.value.isEmpty 
-                        ? null 
+                    onChanged: (value) =>
+                        controller.updateSignUpUsername(value),
+                    errorText: controller.usernameError.value.isEmpty
+                        ? null
                         : controller.usernameError.value,
                   )),
               const SizedBox(height: 12),
@@ -130,8 +131,8 @@ class SignupView extends GetView<AuthController> {
                     hintText: 'Email',
                     keyboardType: TextInputType.emailAddress,
                     onChanged: (value) => controller.updateSignUpEmail(value),
-                    errorText: controller.emailError.value.isEmpty 
-                        ? null 
+                    errorText: controller.emailError.value.isEmpty
+                        ? null
                         : controller.emailError.value,
                   )),
               const SizedBox(height: 12),
@@ -143,8 +144,8 @@ class SignupView extends GetView<AuthController> {
                     onTogglePassword: controller.toggleSignUpPasswordVisibility,
                     onChanged: (value) =>
                         controller.updateSignUpPassword(value),
-                    errorText: controller.passwordError.value.isEmpty 
-                        ? null 
+                    errorText: controller.passwordError.value.isEmpty
+                        ? null
                         : controller.passwordError.value,
                   )),
               const SizedBox(height: 12),
@@ -158,8 +159,8 @@ class SignupView extends GetView<AuthController> {
                         controller.toggleSignUpConfirmPasswordVisibility,
                     onChanged: (value) =>
                         controller.updateSignUpConfirmPassword(value),
-                    errorText: controller.confirmPasswordError.value.isEmpty 
-                        ? null 
+                    errorText: controller.confirmPasswordError.value.isEmpty
+                        ? null
                         : controller.confirmPasswordError.value,
                   )),
               const SizedBox(height: 16),

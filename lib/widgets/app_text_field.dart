@@ -73,7 +73,9 @@ class AppTextField extends StatelessWidget {
               suffixIcon: isPassword
                   ? IconButton(
                       icon: Icon(
-                        isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                        isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                         color: AppColors.textLight,
                         size: 24,
                       ),
