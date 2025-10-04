@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
-import '../../storyview/binding/story_binding.dart';
-import '../../storyview/view/story_screen.dart';
 import '../controller/home_controller.dart';
 import '../../../widgets/post_card.dart';
 import '../../../constants/app_assets.dart';
@@ -111,71 +109,173 @@ class HomePage extends GetView<HomeController> {
 
               const SizedBox(height: 10),
 
-              // 🔹 Statuses
+              // 🔹 Stories Section
               SizedBox(
                 height: 90,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: statuses.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final status = statuses[index];
-                    final bool isAdd = status['isAdd'] == 'true';
-
-                    return GestureDetector(
-                      onTap: () {
-                        if (isAdd) {
-                          Get.toNamed('/addStory');
-                        } else {
-                          Get.to(
-                            () => StoryViewScreen(status: status),
-                            binding: StoryBinding(),
-                          );
-                        }
-                      },
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 58,
-                            height: 69,
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: isAdd ? Colors.grey : Colors.amber,
-                                width: 1,
+                child: Obx(() {
+                  if (controller.isLoadingStories.value &&
+                      controller.statuses.isEmpty) {
+                    // Show loading indicators for stories
+                    return ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: 5, // Show 5 loading placeholders
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        return Column(
+                          children: [
+                            Container(
+                              width: 58,
+                              height: 69,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(50),
                               ),
-                              borderRadius: BorderRadius.circular(50),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.grey),
+                                ),
+                              ),
                             ),
-                            child: isAdd
-                                ? const Center(
-                                    child: Icon(
-                                      Icons.add,
-                                      color: Colors.grey,
-                                      size: 28,
-                                    ),
-                                  )
-                                : Center(
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(30),
-                                      child: Image.asset(
-                                        status['image'] as String? ?? '',
-                                        fit: BoxFit.cover,
-                                        width: 50,
-                                        height: 59,
-                                      ),
-                                    ),
-                                  ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            status['name'] as String? ?? '',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Container(
+                              width: 40,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  }
+
+                  if (controller.storiesErrorMessage.value.isNotEmpty) {
+                    return Center(
+                      child: GestureDetector(
+                        onTap: controller.refreshStories,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.refresh, color: Colors.grey[600]),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Tap to retry',
+                              style: TextStyle(
+                                  color: Colors.grey[600], fontSize: 12),
+                            ),
+                          ],
+                        ),
                       ),
                     );
-                  },
-                ),
+                  }
+
+                  return ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: statuses.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final status = statuses[index];
+                      final bool isAdd = status['isAdd'] == 'true';
+
+                      return GestureDetector(
+                        onTap: () {
+                          if (isAdd) {
+                            Get.toNamed('/addStory');
+                          } else {
+                            // Use the controller's story handling method
+                            controller.handleStoryTap(status);
+                          }
+                        },
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 58,
+                              height: 69,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: isAdd ? Colors.grey : Colors.amber,
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(50),
+                              ),
+                              child: isAdd
+                                  ? const Center(
+                                      child: Icon(
+                                        Icons.add,
+                                        color: Colors.grey,
+                                        size: 28,
+                                      ),
+                                    )
+                                  : Center(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(30),
+                                        child: status['image'] != null &&
+                                                (status['image'] as String)
+                                                    .isNotEmpty
+                                            ? Image.network(
+                                                status['image'] as String,
+                                                fit: BoxFit.cover,
+                                                width: 50,
+                                                height: 59,
+                                                errorBuilder: (context, error,
+                                                    stackTrace) {
+                                                  return Container(
+                                                    width: 50,
+                                                    height: 59,
+                                                    color: Colors.grey[300],
+                                                    child: const Icon(
+                                                        Icons.person,
+                                                        color: Colors.grey),
+                                                  );
+                                                },
+                                                loadingBuilder: (context, child,
+                                                    loadingProgress) {
+                                                  if (loadingProgress == null)
+                                                    return child;
+                                                  return Container(
+                                                    width: 50,
+                                                    height: 59,
+                                                    color: Colors.grey[300],
+                                                    child: const Center(
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                              strokeWidth: 2),
+                                                    ),
+                                                  );
+                                                },
+                                              )
+                                            : Container(
+                                                width: 50,
+                                                height: 59,
+                                                color: Colors.grey[300],
+                                                child: const Icon(Icons.person,
+                                                    color: Colors.grey),
+                                              ),
+                                      ),
+                                    ),
+                            ),
+                            const SizedBox(height: 4),
+                            SizedBox(
+                              width: 58,
+                              child: Text(
+                                status['name'] as String? ?? '',
+                                style: const TextStyle(fontSize: 13),
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                }),
               ),
 
               // 🔹 Posts Section
