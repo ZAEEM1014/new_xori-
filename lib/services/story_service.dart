@@ -1,3 +1,4 @@
+import 'follow_service.dart';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +8,26 @@ import 'package:rxdart/rxdart.dart';
 import '../models/story_model.dart';
 
 class StoryService extends GetxService {
+  /// Fetch all active (non-expired) stories for users the current user is following
+  Future<List<StoryModel>> getActiveStoriesOfFollowingUsers() async {
+    final user = _auth.currentUser;
+    if (user == null) return [];
+    final followService = FollowService();
+    final followingIds = await followService.getFollowingUserIds(user.uid);
+    if (followingIds.isEmpty) return [];
+    final now = DateTime.now();
+    final storiesSnap = await _firestore
+        .collection('stories')
+        .where('userId', whereIn: followingIds)
+        .where('expiresAt', isGreaterThan: now)
+        .orderBy('expiresAt', descending: false)
+        .orderBy('postedAt', descending: true)
+        .get();
+    return storiesSnap.docs
+        .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
+        .toList();
+  }
+
   /// Fetch all active (non-expired) stories for a given user by uid.
   Future<List<StoryModel>> getActiveStoriesForUser(String uid) async {
     try {
@@ -114,63 +135,20 @@ class StoryService extends GetxService {
     });
   }
 
-  /// Get all active (non-expired) stories of the current user only
-  Future<List<StoryModel>> getCurrentUserActiveStories() async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return [];
-
-      final now = DateTime.now();
-      final storiesSnap = await _firestore
-          .collection('stories')
-          .where('userId', isEqualTo: user.uid)
-          .where('expiresAt', isGreaterThan: now)
-          .orderBy('expiresAt', descending: false)
-          .orderBy('postedAt', descending: true)
-          .get();
-
-      return storiesSnap.docs
-          .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      print('Error fetching current user active stories: $e');
-      return [];
-    }
-  }
-
-  /// Get all active stories of users that the current user is following
-  Future<List<StoryModel>> getFollowingUsersActiveStories() async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return [];
-
-      // Get list of user IDs that current user is following
-      final followingSnap = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .collection('following')
-          .get();
-
-      final followingIds = followingSnap.docs.map((d) => d.id).toList();
-
-      // If not following anyone, return empty list
-      if (followingIds.isEmpty) return [];
-
-      final now = DateTime.now();
-      final storiesSnap = await _firestore
-          .collection('stories')
-          .where('userId', whereIn: followingIds)
-          .where('expiresAt', isGreaterThan: now)
-          .orderBy('expiresAt', descending: false)
-          .orderBy('postedAt', descending: true)
-          .get();
-
-      return storiesSnap.docs
-          .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
-          .toList();
-    } catch (e) {
-      print('Error fetching following users active stories: $e');
-      return [];
-    }
+  /// Stream all active (non-expired) stories of the current user only
+  Stream<List<StoryModel>> getCurrentUserActiveStories() {
+    final user = _auth.currentUser;
+    if (user == null) return const Stream.empty();
+    // Use snapshots to listen for real-time updates
+    return _firestore
+        .collection('stories')
+        .where('userId', isEqualTo: user.uid)
+        .where('expiresAt', isGreaterThan: DateTime.now())
+        .orderBy('expiresAt', descending: false)
+        .orderBy('postedAt', descending: true)
+        .snapshots()
+        .map((storiesSnap) => storiesSnap.docs
+            .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
+            .toList());
   }
 }
