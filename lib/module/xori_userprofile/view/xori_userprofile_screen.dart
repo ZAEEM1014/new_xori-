@@ -2,11 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_assets.dart';
-import '../../../widgets/gradient_button.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../controller/xori_userprofile_controller.dart';
+
 import '../../../models/post_model.dart';
+import '../../../models/follow_user_model.dart';
+import '../../../services/follow_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class _FollowButton extends StatelessWidget {
+  final String currentUserId;
+  final FollowUser targetUser;
+  final FollowService _followService = FollowService();
+
+  _FollowButton(
+      {required this.currentUserId, required this.targetUser, Key? key})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<bool>(
+      stream:
+          _followService.isFollowingStream(currentUserId, targetUser.userId),
+      builder: (context, snapshot) {
+        final isFollowing = snapshot.data ?? false;
+        return ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isFollowing ? AppColors.primary : Colors.white,
+            foregroundColor: isFollowing ? Colors.white : AppColors.primary,
+            side: BorderSide(color: AppColors.primary),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            minimumSize: const Size.fromHeight(44),
+          ),
+          onPressed: () async {
+            await _followService.toggleFollow(currentUserId, targetUser);
+          },
+          child: Text(
+            isFollowing ? 'Following' : 'Follow',
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
   const XoriUserProfileScreen({super.key});
@@ -17,193 +62,24 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Obx(() {
-          try {
-            if (controller.isLoading.value) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final user = controller.user.value;
+          if (controller.isLoading.value) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final user = controller.user.value;
 
-            // Check if user data is empty (no user found)
-            if (user.uid.isEmpty) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.person_off, size: 64, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text(
-                      'User not found',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return SingleChildScrollView(
-              child: Column(
-                children: [
-                  /// Settings Button
-
-                  /// Profile Info
-                  Column(
-                    children: [
-                      SizedBox(height: 40),
-                      user.profileImageUrl != null &&
-                              user.profileImageUrl!.isNotEmpty
-                          ? CircleAvatar(
-                              radius: 50,
-                              backgroundImage:
-                                  NetworkImage(user.profileImageUrl!),
-                            )
-                          : const CircleAvatar(
-                              radius: 50,
-                              backgroundImage: AssetImage(AppAssets.ellipse75),
-                            ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            user.username,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textDark,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.verified,
-                            color: Colors.blue,
-                            size: 18,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        user.bio,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  /// Stats (placeholders, replace with real data if available)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: const [
-                        _StatItem(
-                          title: '0',
-                          subtitle: "Posts",
-                        ),
-                        _StatItem(
-                          title: '0',
-                          subtitle: "Followers",
-                        ),
-                        _StatItem(
-                          title: '0',
-                          subtitle: "Following",
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  /// Follow + Message
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GradientButton(
-                            text: controller.isFollowing.value
-                                ? "Following"
-                                : "Follow",
-                            onPressed: controller.toggleFollow,
-                            height: 44,
-                            borderRadius: 10,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          height: 44,
-                          width: 50,
-                          decoration: BoxDecoration(
-                            color: AppColors.inputBackground,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.email_outlined,
-                            color: AppColors.textDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  /// Tabs (SVG icons)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildSvgTabIcon(
-                        AppAssets.gridTabIcon,
-                        controller.activeTab.value == 0,
-                        () => controller.changeTab(0),
-                      ),
-                      const SizedBox(width: 30),
-                      _buildSvgTabIcon(
-                        AppAssets.reels,
-                        controller.activeTab.value == 1,
-                        () => controller.changeTab(1),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  /// Images / Reels Section
-                  controller.activeTab.value == 0
-                      ? _buildStaggeredGridPosts()
-                      : _buildStaggeredGridReels(),
-                ],
-              ),
-            );
-          } catch (e) {
-            print('[DEBUG] XoriUserProfileScreen: Error rendering UI: $e');
+          // Check if user data is empty (no user found)
+          if (user.uid.isEmpty) {
             return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  Icon(Icons.person_off, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
                   Text(
-                    'Something went wrong',
+                    'User not found',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
-                      color: Colors.red,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Please try again later',
-                    style: TextStyle(
-                      fontSize: 14,
                       color: Colors.grey,
                     ),
                   ),
@@ -211,6 +87,152 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
               ),
             );
           }
+
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                /// Settings Button
+
+                /// Profile Info
+                Column(
+                  children: [
+                    SizedBox(height: 40),
+                    user.profileImageUrl != null &&
+                            user.profileImageUrl!.isNotEmpty
+                        ? CircleAvatar(
+                            radius: 50,
+                            backgroundImage:
+                                NetworkImage(user.profileImageUrl!),
+                          )
+                        : const CircleAvatar(
+                            radius: 50,
+                            backgroundImage: AssetImage(AppAssets.ellipse75),
+                          ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          user.username,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.verified,
+                          color: Colors.blue,
+                          size: 18,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      user.bio,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                /// Stats (placeholders, replace with real data if available)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: const [
+                      _StatItem(
+                        title: '0',
+                        subtitle: "Posts",
+                      ),
+                      _StatItem(
+                        title: '0',
+                        subtitle: "Followers",
+                      ),
+                      _StatItem(
+                        title: '0',
+                        subtitle: "Following",
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                /// Follow + Message
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _FollowButton(
+                          currentUserId: Get.find<XoriUserProfileController>()
+                              .user
+                              .value
+                              .uid, // TODO: Replace with actual current user id from auth
+                          targetUser: FollowUser(
+                            userId: controller.user.value.uid,
+                            username: controller.user.value.username,
+                            userPhotoUrl:
+                                controller.user.value.profileImageUrl ?? '',
+                            followedAt: Timestamp
+                                .now(), // Not used on follow, but required by model
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        height: 44,
+                        width: 50,
+                        decoration: BoxDecoration(
+                          color: AppColors.inputBackground,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.email_outlined,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                /// Tabs (SVG icons)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildSvgTabIcon(
+                      AppAssets.gridTabIcon,
+                      controller.activeTab.value == 0,
+                      () => controller.changeTab(0),
+                    ),
+                    const SizedBox(width: 30),
+                    _buildSvgTabIcon(
+                      AppAssets.reels,
+                      controller.activeTab.value == 1,
+                      () => controller.changeTab(1),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                /// Images / Reels Section
+                controller.activeTab.value == 0
+                    ? _buildStaggeredGridPosts()
+                    : _buildStaggeredGridReels(),
+              ],
+            ),
+          );
         }),
       ),
     );
