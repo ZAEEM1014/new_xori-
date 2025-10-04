@@ -116,18 +116,24 @@ class SignupView extends GetView<AuthController> {
                 ),
               ),
               const SizedBox(height: 32),
-              AppTextField(
-                controller: TextEditingController(),
-                hintText: 'Username',
-                onChanged: (value) => controller.updateSignUpUsername(value),
-              ),
+              Obx(() => AppTextField(
+                    controller: TextEditingController(),
+                    hintText: 'Username',
+                    onChanged: (value) => controller.updateSignUpUsername(value),
+                    errorText: controller.usernameError.value.isEmpty 
+                        ? null 
+                        : controller.usernameError.value,
+                  )),
               const SizedBox(height: 12),
-              AppTextField(
-                controller: TextEditingController(),
-                hintText: 'Email',
-                keyboardType: TextInputType.emailAddress,
-                onChanged: (value) => controller.updateSignUpEmail(value),
-              ),
+              Obx(() => AppTextField(
+                    controller: TextEditingController(),
+                    hintText: 'Email',
+                    keyboardType: TextInputType.emailAddress,
+                    onChanged: (value) => controller.updateSignUpEmail(value),
+                    errorText: controller.emailError.value.isEmpty 
+                        ? null 
+                        : controller.emailError.value,
+                  )),
               const SizedBox(height: 12),
               Obx(() => AppTextField(
                     controller: TextEditingController(),
@@ -137,6 +143,9 @@ class SignupView extends GetView<AuthController> {
                     onTogglePassword: controller.toggleSignUpPasswordVisibility,
                     onChanged: (value) =>
                         controller.updateSignUpPassword(value),
+                    errorText: controller.passwordError.value.isEmpty 
+                        ? null 
+                        : controller.passwordError.value,
                   )),
               const SizedBox(height: 12),
               Obx(() => AppTextField(
@@ -149,6 +158,9 @@ class SignupView extends GetView<AuthController> {
                         controller.toggleSignUpConfirmPasswordVisibility,
                     onChanged: (value) =>
                         controller.updateSignUpConfirmPassword(value),
+                    errorText: controller.confirmPasswordError.value.isEmpty 
+                        ? null 
+                        : controller.confirmPasswordError.value,
                   )),
               const SizedBox(height: 16),
               // Personality Traits Selection UI

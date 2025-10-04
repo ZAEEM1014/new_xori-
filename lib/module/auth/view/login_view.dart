@@ -32,12 +32,15 @@ class LoginView extends GetView<AuthController> {
                 ),
               ),
               const SizedBox(height: 40),
-              AppTextField(
-                controller: TextEditingController(),
-                hintText: 'Enter your email',
-                keyboardType: TextInputType.emailAddress,
-                onChanged: (value) => controller.updateLoginEmail(value),
-              ),
+              Obx(() => AppTextField(
+                    controller: TextEditingController(),
+                    hintText: 'Enter your email',
+                    keyboardType: TextInputType.emailAddress,
+                    onChanged: (value) => controller.updateLoginEmail(value),
+                    errorText: controller.loginEmailError.value.isEmpty 
+                        ? null 
+                        : controller.loginEmailError.value,
+                  )),
               const SizedBox(height: 12),
               Obx(() => AppTextField(
                     controller: TextEditingController(),
@@ -46,6 +49,9 @@ class LoginView extends GetView<AuthController> {
                     isPasswordVisible: controller.isLoginPasswordVisible.value,
                     onTogglePassword: controller.toggleLoginPasswordVisibility,
                     onChanged: (value) => controller.updateLoginPassword(value),
+                    errorText: controller.loginPasswordError.value.isEmpty 
+                        ? null 
+                        : controller.loginPasswordError.value,
                   )),
               Align(
                 alignment: Alignment.centerRight,

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -47,6 +48,14 @@ class AuthController extends GetxController {
   final RxString loginEmail = ''.obs;
   final RxString loginPassword = ''.obs;
 
+  // Validation errors
+  final RxString usernameError = ''.obs;
+  final RxString emailError = ''.obs;
+  final RxString passwordError = ''.obs;
+  final RxString confirmPasswordError = ''.obs;
+  final RxString loginEmailError = ''.obs;
+  final RxString loginPasswordError = ''.obs;
+
   // Validation states
   final RxBool isSignUpFormValid = false.obs;
   final RxBool isLoginFormValid = false.obs;
@@ -89,17 +98,95 @@ class AuthController extends GetxController {
   }
 
   void _validateSignUpForm() {
-    isSignUpFormValid.value = signUpUsername.value.trim().isNotEmpty &&
-        GetUtils.isEmail(signUpEmail.value.trim()) &&
-        signUpPassword.value.length >= 6 &&
-        signUpPassword.value == signUpConfirmPassword.value &&
-        selectedTraits.length == 3 &&
-        profileImage.value != null;
+    // Clear errors first
+    _clearValidationErrors();
+    
+    bool isValid = true;
+    
+    // Username validation
+    if (signUpUsername.value.trim().isEmpty) {
+      usernameError.value = 'Username is required';
+      isValid = false;
+    } else if (signUpUsername.value.trim().length < 3) {
+      usernameError.value = 'Username must be at least 3 characters';
+      isValid = false;
+    } else if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(signUpUsername.value.trim())) {
+      usernameError.value = 'Username can only contain letters, numbers, and underscores';
+      isValid = false;
+    }
+    
+    // Email validation
+    if (signUpEmail.value.trim().isEmpty) {
+      emailError.value = 'Email is required';
+      isValid = false;
+    } else if (!GetUtils.isEmail(signUpEmail.value.trim())) {
+      emailError.value = 'Please enter a valid email address';
+      isValid = false;
+    }
+    
+    // Password validation
+    if (signUpPassword.value.isEmpty) {
+      passwordError.value = 'Password is required';
+      isValid = false;
+    } else if (signUpPassword.value.length < 6) {
+      passwordError.value = 'Password must be at least 6 characters';
+      isValid = false;
+    } else if (!RegExp(r'^(?=.*[a-zA-Z])(?=.*\d)').hasMatch(signUpPassword.value)) {
+      passwordError.value = 'Password must contain at least one letter and one number';
+      isValid = false;
+    }
+    
+    // Confirm password validation
+    if (signUpConfirmPassword.value.isEmpty) {
+      confirmPasswordError.value = 'Please confirm your password';
+      isValid = false;
+    } else if (signUpPassword.value != signUpConfirmPassword.value) {
+      confirmPasswordError.value = 'Passwords do not match';
+      isValid = false;
+    }
+    
+    // Additional validations
+    if (selectedTraits.length != 3) {
+      isValid = false;
+    }
+    
+    if (profileImage.value == null) {
+      isValid = false;
+    }
+    
+    isSignUpFormValid.value = isValid;
   }
 
   void _validateLoginForm() {
-    isLoginFormValid.value = GetUtils.isEmail(loginEmail.value.trim()) &&
-        loginPassword.value.isNotEmpty;
+    // Clear login errors first
+    loginEmailError.value = '';
+    loginPasswordError.value = '';
+    
+    bool isValid = true;
+    
+    // Email validation
+    if (loginEmail.value.trim().isEmpty) {
+      loginEmailError.value = 'Email is required';
+      isValid = false;
+    } else if (!GetUtils.isEmail(loginEmail.value.trim())) {
+      loginEmailError.value = 'Please enter a valid email address';
+      isValid = false;
+    }
+    
+    // Password validation
+    if (loginPassword.value.isEmpty) {
+      loginPasswordError.value = 'Password is required';
+      isValid = false;
+    }
+    
+    isLoginFormValid.value = isValid;
+  }
+
+  void _clearValidationErrors() {
+    usernameError.value = '';
+    emailError.value = '';
+    passwordError.value = '';
+    confirmPasswordError.value = '';
   }
 
   // Handle authentication state changes
@@ -146,16 +233,20 @@ class AuthController extends GetxController {
 
   // Personality traits management
   void toggleTrait(String trait) {
-    if (selectedTraits.contains(trait)) {
-      selectedTraits.remove(trait);
-    } else {
-      if (selectedTraits.length >= 3) {
-        _setError("You can only select up to 3 traits");
-        return;
+    try {
+      if (selectedTraits.contains(trait)) {
+        selectedTraits.remove(trait);
+      } else {
+        if (selectedTraits.length >= 3) {
+          _setError("You can only select up to 3 personality traits");
+          return;
+        }
+        selectedTraits.add(trait);
       }
-      selectedTraits.add(trait);
+      _clearMessages();
+    } catch (e) {
+      _setError('Error selecting trait: ${e.toString()}');
     }
-    _clearMessages();
   }
 
   // Image picker methods
@@ -193,8 +284,22 @@ class AuthController extends GetxController {
   Future<void> signUp() async {
     if (isLoading.value) return;
 
+    // Validate form first
+    _validateSignUpForm();
+    
     if (!isSignUpFormValid.value) {
-      _setError('Please fill all fields correctly');
+      _setError('Please correct all errors and fill all required fields');
+      return;
+    }
+
+    // Additional validations
+    if (selectedTraits.length != 3) {
+      _setError('Please select exactly 3 personality traits');
+      return;
+    }
+
+    if (profileImage.value == null) {
+      _setError('Please select a profile image');
       return;
     }
 
@@ -219,22 +324,22 @@ class AuthController extends GetxController {
       );
 
       if (credential != null && error == null) {
-        _setSuccess(
-            'Account created successfully! Please check your email for verification.');
+        _setSuccess('Account created successfully!');
         _clearSignUpForm();
-        // Show toast for 2 seconds, then navigate to login
-        Get.showSnackbar(GetSnackBar(
-          message:
-              'Verify your email first, a verification email has been sent to your email address.',
-          duration: const Duration(seconds: 2),
-        ));
-        await Future.delayed(const Duration(seconds: 2));
+        
+        // Show email verification dialog
+        await _showEmailVerificationDialog();
+        
         Get.offAllNamed('/login');
       } else {
         _setError(error ?? 'Sign up failed. Please try again.');
       }
     } catch (e) {
-      _setError('Sign up error: ${e.toString()}');
+      if (e is FirebaseAuthException) {
+        _setError(_getFirebaseAuthErrorMessage(e));
+      } else {
+        _setError('Sign up error: ${e.toString()}');
+      }
     } finally {
       isLoading.value = false;
     }
@@ -243,8 +348,11 @@ class AuthController extends GetxController {
   Future<void> signIn() async {
     if (isLoading.value) return;
 
+    // Validate form first
+    _validateLoginForm();
+    
     if (!isLoginFormValid.value) {
-      _setError('Please enter valid email and password');
+      _setError('Please correct all errors in the form');
       return;
     }
 
@@ -382,6 +490,28 @@ class AuthController extends GetxController {
   void _clearAllForms() {
     _clearSignUpForm();
     _clearLoginForm();
+    _clearValidationErrors();
+    loginEmailError.value = '';
+    loginPasswordError.value = '';
+  }
+
+  // Show email verification dialog
+  Future<void> _showEmailVerificationDialog() async {
+    return Get.dialog(
+      AlertDialog(
+        title: const Text('Email Verification'),
+        content: const Text(
+          'A verification email has been sent to your email address. Please verify your email before logging in.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
   }
 
   String _getFirebaseAuthErrorMessage(FirebaseAuthException e) {

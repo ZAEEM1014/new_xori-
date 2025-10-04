@@ -84,7 +84,16 @@ class AuthService {
         print('[DEBUG] AuthService: Firestore save failed: $firestoreError');
         return (null, "Failed to save user data: $firestoreError");
       }
-      // No email verification required
+      // Send email verification
+      try {
+        print('[DEBUG] AuthService: Sending email verification');
+        await user.sendEmailVerification();
+        print('[DEBUG] AuthService: Email verification sent successfully');
+      } catch (verificationError) {
+        print('[DEBUG] AuthService: Email verification failed: $verificationError');
+        // Don't fail signup if verification email fails to send
+      }
+      
       return (userCredential, null);
     } catch (e, st) {
       print('[DEBUG] AuthService: Exception: ' + e.toString());
@@ -105,7 +114,11 @@ class AuthService {
       if (user == null) {
         return (null, "Login failed. Please try again.");
       }
-      // No email verification required
+      // Check email verification
+      if (!user.emailVerified) {
+        return (null, "Please verify your email before logging in. Check your inbox for a verification email.");
+      }
+      
       return (userCredential, null);
     } catch (e) {
       return (null, e.toString());
@@ -118,6 +131,23 @@ class AuthService {
       await _auth.signOut();
     } catch (e) {
       throw _handleAuthException(e);
+    }
+  }
+
+  // Send email verification
+  Future<String?> sendEmailVerification() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+        return null; // Success
+      } else if (user?.emailVerified == true) {
+        return "Email is already verified.";
+      } else {
+        return "No user found. Please sign up first.";
+      }
+    } catch (e) {
+      return _handleAuthException(e).toString();
     }
   }
 
