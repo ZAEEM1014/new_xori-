@@ -8,6 +8,7 @@ import 'package:xori/module/profile/controller/profile_controller.dart';
 import 'package:xori/services/auth_service.dart';
 import 'package:xori/services/firestore_service.dart';
 import 'package:xori/services/cloudinary_service.dart';
+import 'package:xori/services/story_service.dart';
 import 'package:xori/routes/app_pages.dart';
 import 'package:xori/routes/app_routes.dart';
 import 'package:xori/services/onboarding_service.dart';
@@ -37,6 +38,8 @@ void main() async {
   Get.put(CloudinaryService(), permanent: true);
   Get.put(FirestoreService(), permanent: true);
   Get.put(AuthService(), permanent: true);
+  Get.put(StoryService(),
+      permanent: true); // <-- Automatically register StoryService
 
   // Initialize main controller
   Get.put(AuthController(), permanent: true);

@@ -7,6 +7,8 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import '../controller/add_story_controller.dart';
 import '../../../widgets/gradient_button.dart';
+import '../../../services/cloudinary_service.dart';
+import '../../../services/story_service.dart';
 
 class AddStoryScreen extends StatelessWidget {
   const AddStoryScreen({super.key});
@@ -48,15 +50,36 @@ class AddStoryScreen extends StatelessWidget {
               Positioned(
                 top: MediaQuery.of(context).padding.top + 16,
                 right: 20,
-                child: GradientButton(
-                  text: 'Add Story',
-                  height: 40,
-                  borderRadius: 24,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  onPressed: () {
-                    // TODO: Implement add story upload logic
-                  },
-                ),
+                child: Obx(() {
+                  final isUploading =
+                      Get.find<CloudinaryService>().isUploading.value;
+                  return GradientButton(
+                    text: isUploading ? 'Uploading...' : 'Add Story',
+                    height: 40,
+                    borderRadius: 24,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    enabled: !isUploading,
+                    isLoading: isUploading,
+                    onPressed: () async {
+                      final cloudinaryService = Get.find<CloudinaryService>();
+                      final storyService = Get.find<StoryService>();
+                      final imageFile = controller.selectedImage.value;
+                      if (imageFile == null) return;
+                      // Upload to Cloudinary
+                      final url = await cloudinaryService.uploadImage(imageFile,
+                          folder: 'xori_stories');
+                      if (url != null) {
+                        await storyService.uploadStory(url);
+                        controller.clearImage();
+                        // Navigate to navwrapper (home) after successful upload
+                        Get.offAllNamed('/navwrapper');
+                        Get.snackbar('Success', 'Story added!');
+                      } else {
+                        Get.snackbar('Error', 'Failed to upload story image.');
+                      }
+                    },
+                  );
+                }),
               ),
 
             // Close button (top left) when image is selected

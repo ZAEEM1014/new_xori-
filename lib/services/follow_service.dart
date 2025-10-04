@@ -80,4 +80,20 @@ class FollowService {
       throw Exception('Failed to toggle follow: ${e.toString()}');
     }
   }
+
+  /// Get list of user IDs that the current user is following
+  Future<List<String>> getFollowingUserIds(String currentUserId) async {
+    try {
+      final followingSnap = await _firestore
+          .collection(usersCollection)
+          .doc(currentUserId)
+          .collection(followingSub)
+          .get();
+
+      return followingSnap.docs.map((doc) => doc.id).toList();
+    } catch (e) {
+      print('Error fetching following user IDs: $e');
+      return [];
+    }
+  }
 }
