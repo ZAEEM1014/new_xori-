@@ -2,6 +2,27 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 
 class PostService {
+  // Returns a stream of the like count for a post
+  Stream<int> getLikeCount(String postId) {
+    return _firestore
+        .collection(_postsCollection)
+        .doc(postId)
+        .collection('likes')
+        .snapshots()
+        .map((snapshot) => snapshot.size);
+  }
+
+  // Returns a stream indicating whether the user has liked the post
+  Stream<bool> isPostLikedByUser(String postId, String userId) {
+    return _firestore
+        .collection(_postsCollection)
+        .doc(postId)
+        .collection('likes')
+        .doc(userId)
+        .snapshots()
+        .map((doc) => doc.exists);
+  }
+
   static final PostService _instance = PostService._internal();
   factory PostService() => _instance;
   PostService._internal();
@@ -11,7 +32,8 @@ class PostService {
 
   Future<String> createPost(Post post) async {
     try {
-      final docRef = await _firestore.collection(_postsCollection).add(post.toMap());
+      final docRef =
+          await _firestore.collection(_postsCollection).add(post.toMap());
       return docRef.id;
     } catch (e) {
       throw Exception('Failed to create post: ${e.toString()}');
@@ -20,7 +42,8 @@ class PostService {
 
   Future<Post?> getPostById(String postId) async {
     try {
-      final doc = await _firestore.collection(_postsCollection).doc(postId).get();
+      final doc =
+          await _firestore.collection(_postsCollection).doc(postId).get();
       if (doc.exists && doc.data() != null) {
         return Post.fromDoc(doc);
       }
@@ -43,10 +66,10 @@ class PostService {
           .map((doc) => Post.fromDoc(doc))
           .where((post) => !post.isDeleted)
           .toList();
-      
-      // Sort by createdAt descending (newest first) on client side  
+
+      // Sort by createdAt descending (newest first) on client side
       posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          
+
       return posts;
     } catch (e) {
       throw Exception('Failed to fetch user posts: ${e.toString()}');
@@ -69,9 +92,12 @@ class PostService {
 
   Future<void> likePost(String postId, String userId) async {
     try {
-      await _firestore.collection(_postsCollection).doc(postId).update({
-        'likes': FieldValue.arrayUnion([userId])
-      });
+      await _firestore
+          .collection(_postsCollection)
+          .doc(postId)
+          .collection('likes')
+          .doc(userId)
+          .set({'likedAt': FieldValue.serverTimestamp()});
     } catch (e) {
       throw Exception('Failed to like post: ${e.toString()}');
     }
@@ -79,9 +105,12 @@ class PostService {
 
   Future<void> unlikePost(String postId, String userId) async {
     try {
-      await _firestore.collection(_postsCollection).doc(postId).update({
-        'likes': FieldValue.arrayRemove([userId])
-      });
+      await _firestore
+          .collection(_postsCollection)
+          .doc(postId)
+          .collection('likes')
+          .doc(userId)
+          .delete();
     } catch (e) {
       throw Exception('Failed to unlike post: ${e.toString()}');
     }
@@ -89,9 +118,10 @@ class PostService {
 
   Future<void> deletePost(String postId) async {
     try {
-      await _firestore.collection(_postsCollection).doc(postId).update({
-        'isDeleted': true
-      });
+      await _firestore
+          .collection(_postsCollection)
+          .doc(postId)
+          .update({'isDeleted': true});
     } catch (e) {
       throw Exception('Failed to delete post: ${e.toString()}');
     }
@@ -101,15 +131,18 @@ class PostService {
     try {
       final allowedFields = ['caption', 'hashtags', 'taggedUsers', 'location'];
       final filteredData = <String, dynamic>{};
-      
+
       for (final entry in data.entries) {
         if (allowedFields.contains(entry.key)) {
           filteredData[entry.key] = entry.value;
         }
       }
-      
+
       if (filteredData.isNotEmpty) {
-        await _firestore.collection(_postsCollection).doc(postId).update(filteredData);
+        await _firestore
+            .collection(_postsCollection)
+            .doc(postId)
+            .update(filteredData);
       }
     } catch (e) {
       throw Exception('Failed to update post: ${e.toString()}');
@@ -123,14 +156,14 @@ class PostService {
           .where('userId', isEqualTo: userId)
           .snapshots()
           .map((snapshot) {
-            final posts = snapshot.docs
-                .map((doc) => Post.fromDoc(doc))
-                .where((post) => !post.isDeleted)
-                .toList();
-            // Sort by createdAt descending (newest first) on client side
-            posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-            return posts;
-          });
+        final posts = snapshot.docs
+            .map((doc) => Post.fromDoc(doc))
+            .where((post) => !post.isDeleted)
+            .toList();
+        // Sort by createdAt descending (newest first) on client side
+        posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return posts;
+      });
     } catch (e) {
       throw Exception('Failed to stream user posts: ${e.toString()}');
     }
@@ -143,7 +176,8 @@ class PostService {
           .where('isDeleted', isEqualTo: false)
           .orderBy('createdAt', descending: true)
           .snapshots()
-          .map((snapshot) => snapshot.docs.map((doc) => Post.fromDoc(doc)).toList());
+          .map((snapshot) =>
+              snapshot.docs.map((doc) => Post.fromDoc(doc)).toList());
     } catch (e) {
       throw Exception('Failed to stream all posts: ${e.toString()}');
     }
@@ -207,9 +241,8 @@ class PostService {
   // Get recent posts (last 24 hours)
   Future<List<Post>> getRecentPosts() async {
     try {
-      final yesterday = Timestamp.fromDate(
-        DateTime.now().subtract(const Duration(days: 1))
-      );
+      final yesterday =
+          Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 1)));
 
       final querySnapshot = await _firestore
           .collection(_postsCollection)

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../controller/story_controller.dart';
 import '../../../constants/app_colors.dart';
+import '../../../widgets/app_like_button.dart';
 
 class StoryViewScreen extends StatefulWidget {
   @override
@@ -259,7 +260,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                       }),
                     ),
                   ),
-                  // Bottom message input and heart
+                  // Bottom message input and like button
                   Positioned(
                     bottom: 20,
                     left: 12,
@@ -285,8 +286,13 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                           ),
                         ),
                         const SizedBox(width: 10),
-                        const Icon(Icons.favorite_border,
-                            color: Color(0xFFFFEF12), size: 30),
+                        // Like button with burst effect
+                        AppLikeButton(
+                          isLiked: false, // TODO: Bind to real like state
+                          likeCount: 0, // TODO: Bind to real like count
+                          onTap: (liked) {}, // TODO: Implement like logic
+                          size: 32,
+                        ),
                       ],
                     ),
                   ),

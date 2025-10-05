@@ -1,24 +1,58 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import '../routes/app_routes.dart';
+import '../module/navbar_wrapper/controller/navwrapper_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:xori/constants/app_colors.dart';
 import 'package:xori/models/post_model.dart';
 import 'package:shimmer/shimmer.dart';
 import '../constants/app_assets.dart';
-import 'package:xori/module/navbar_wrapper/controller/navwrapper_controller.dart';
 
-class PostCard extends StatelessWidget {
+import 'app_like_button.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:xori/services/post_service.dart';
+
+class PostCard extends StatefulWidget {
   final dynamic
       post; // Can be either Post model or Map<String, dynamic> for backward compatibility
   const PostCard({Key? key, required this.post}) : super(key: key);
 
   @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> {
+  late String? currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  }
+
+  Future<void> _onLikeTap(bool liked) async {
+    if (currentUserId == null) return;
+    final isPostModel = widget.post is Post;
+    final postId = isPostModel ? (widget.post as Post).id : widget.post["id"];
+    try {
+      if (liked) {
+        await PostService().likePost(postId, currentUserId!);
+      } else {
+        await PostService().unlikePost(postId, currentUserId!);
+      }
+    } catch (e) {
+      // Optionally show error
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final bool isPostModel = post is Post;
+    final bool isPostModel = widget.post is Post;
     final String tappedUserUid =
-        isPostModel ? (post as Post).userId : post["uid"] ?? '';
+        isPostModel ? (widget.post as Post).userId : widget.post["uid"] ?? '';
+    final String postId =
+        isPostModel ? (widget.post as Post).id : widget.post["id"];
 
     final List<Widget> children = [];
 
@@ -30,23 +64,23 @@ class PostCard extends StatelessWidget {
           child: CircleAvatar(
             radius: 23,
             backgroundImage: isPostModel
-                ? (post as Post).userPhotoUrl.isNotEmpty
-                    ? NetworkImage((post as Post).userPhotoUrl)
+                ? (widget.post as Post).userPhotoUrl.isNotEmpty
+                    ? NetworkImage((widget.post as Post).userPhotoUrl)
                     : const AssetImage('assets/images/profile1.png')
                         as ImageProvider
-                : AssetImage(post["profilePic"]),
+                : AssetImage(widget.post["profilePic"]),
           ),
         ),
         title: GestureDetector(
           onTap: () => _handleProfileTap(context, tappedUserUid),
           child: Text(
-            isPostModel ? (post as Post).username : post["name"],
+            isPostModel ? (widget.post as Post).username : widget.post["name"],
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
         subtitle: Text(isPostModel
-            ? _formatTimestamp((post as Post).createdAt.toDate())
-            : post["time"]),
+            ? _formatTimestamp((widget.post as Post).createdAt.toDate())
+            : widget.post["time"]),
         trailing: SvgPicture.asset(
           AppAssets.favourite,
           height: 24,
@@ -56,14 +90,14 @@ class PostCard extends StatelessWidget {
     );
 
     // Post Image/Media
-    if (isPostModel && (post as Post).mediaUrls.isNotEmpty) {
+    if (isPostModel && (widget.post as Post).mediaUrls.isNotEmpty) {
       children.add(
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 10.0),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(2),
             child: Image.network(
-              (post as Post).mediaUrls.first,
+              (widget.post as Post).mediaUrls.first,
               fit: BoxFit.cover,
               width: double.infinity,
               loadingBuilder: (context, child, loadingProgress) {
@@ -93,7 +127,7 @@ class PostCard extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 10.0),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(2),
-            child: Image.asset(post["postImage"], fit: BoxFit.cover),
+            child: Image.asset(widget.post["postImage"], fit: BoxFit.cover),
           ),
         ),
       );
@@ -104,7 +138,7 @@ class PostCard extends StatelessWidget {
       Padding(
         padding: EdgeInsets.only(top: 12.0, left: 12, right: 12),
         child: Text(
-          isPostModel ? (post as Post).caption : post["caption"],
+          isPostModel ? (widget.post as Post).caption : widget.post["caption"],
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         ),
       ),
@@ -116,21 +150,30 @@ class PostCard extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: Row(
           children: [
-            // Likes
-            Row(
-              children: [
-                const Icon(Icons.favorite, color: Colors.amber),
-                const SizedBox(width: 4),
-                Text(
-                  isPostModel
-                      ? (post as Post).likes.length.toString()
-                      : post["likes"],
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            // Like button with burst effect
+            StreamBuilder<int>(
+              stream: PostService().getLikeCount(postId),
+              builder: (context, likeCountSnapshot) {
+                final int likeCount = likeCountSnapshot.data ?? 0;
+                return StreamBuilder<bool>(
+                  stream: currentUserId == null
+                      ? null
+                      : PostService().isPostLikedByUser(postId, currentUserId!),
+                  builder: (context, isLikedSnapshot) {
+                    final bool isLiked = isLikedSnapshot.data ?? false;
+                    return AppLikeButton(
+                      isLiked: isLiked,
+                      likeCount: likeCount,
+                      onTap: (liked) async {
+                        await _onLikeTap(liked);
+                      },
+                      size: 28,
+                      borderColor: AppColors.textDark,
+                      likeCountColor: AppColors.textDark,
+                    );
+                  },
+                );
+              },
             ),
             const SizedBox(width: 10),
             // Comments
@@ -145,8 +188,8 @@ class PostCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   isPostModel
-                      ? (post as Post).commentCount.toString()
-                      : post["comments"],
+                      ? (widget.post as Post).commentCount.toString()
+                      : widget.post["comments"],
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -168,7 +211,8 @@ class PostCard extends StatelessWidget {
                 Text(
                   isPostModel
                       ? "0"
-                      : post["shares"], // Static since shares not in Post model
+                      : widget.post[
+                          "shares"], // Static since shares not in Post model
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -191,8 +235,6 @@ class PostCard extends StatelessWidget {
       ),
     );
   }
-
-  // Only methods below this line
 
   String _formatTimestamp(DateTime dateTime) {
     final now = DateTime.now();
