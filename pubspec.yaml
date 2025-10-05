@@ -45,6 +45,7 @@ dependencies:
   google_sign_in: ^6.1.6
   cloudinary_sdk: ^5.0.0+1
   shared_preferences: ^2.5.3
+  share_plus: ^7.2.1
 
   shimmer: ^3.0.0
   camera: ^0.11.2

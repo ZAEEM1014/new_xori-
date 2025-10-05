@@ -12,6 +12,7 @@ class Post {
   final Timestamp createdAt;
   final List<String> likes;
   final int commentCount;
+  final int shareCount;
   final String? location;
   final List<String>? mentions;
   final bool isDeleted;
@@ -29,6 +30,7 @@ class Post {
     required this.createdAt,
     required this.likes,
     required this.commentCount,
+    required this.shareCount,
     this.location,
     this.mentions,
     this.isDeleted = false,
@@ -70,6 +72,7 @@ class Post {
       createdAt: _safeTimestamp(data['createdAt']),
       likes: _safeStringList(data['likes']),
       commentCount: _safeInt(data['commentCount']),
+      shareCount: _safeInt(data['shareCount']),
       location: data['location'] as String?,
       mentions:
           data['mentions'] != null ? _safeStringList(data['mentions']) : null,
@@ -90,6 +93,7 @@ class Post {
       'createdAt': createdAt,
       'likes': likes,
       'commentCount': commentCount,
+      'shareCount': shareCount,
       if (location != null) 'location': location,
       if (mentions != null) 'mentions': mentions,
       'isDeleted': isDeleted,
@@ -109,6 +113,7 @@ class Post {
     Timestamp? createdAt,
     List<String>? likes,
     int? commentCount,
+    int? shareCount,
     String? location,
     List<String>? mentions,
     bool? isDeleted,
@@ -126,6 +131,7 @@ class Post {
       createdAt: createdAt ?? this.createdAt,
       likes: likes ?? this.likes,
       commentCount: commentCount ?? this.commentCount,
+      shareCount: shareCount ?? this.shareCount,
       location: location ?? this.location,
       mentions: mentions ?? this.mentions,
       isDeleted: isDeleted ?? this.isDeleted,

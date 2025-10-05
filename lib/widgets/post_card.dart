@@ -13,6 +13,11 @@ import 'app_like_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:xori/services/post_service.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'comment_bottom_sheet.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/services.dart';
+
 class PostCard extends StatefulWidget {
   final dynamic
       post; // Can be either Post model or Map<String, dynamic> for backward compatibility
@@ -23,6 +28,91 @@ class PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<PostCard> {
+  // For share icon animation
+  double _shareIconScale = 1.0;
+
+  // For share count
+  int? _localShareCount;
+
+  Future<void> _onShareTap(String postId) async {
+    setState(() => _shareIconScale = 0.85);
+    await Future.delayed(const Duration(milliseconds: 80));
+    setState(() => _shareIconScale = 1.0);
+
+    // Generate a shareable link (for demo, just use postId)
+    final link = 'https://xori.app/post/$postId';
+
+    // Show a dialog with the link and copy/share options
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Share Post'),
+        content: SelectableText(link),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Future.delayed(const Duration(milliseconds: 100));
+              Navigator.of(context).pop('copy');
+            },
+            child: const Text('Copy Link'),
+          ),
+          TextButton(
+            onPressed: () async {
+              // Use share_plus
+              try {
+                // ignore: use_build_context_synchronously
+                await Share.share(link);
+              } catch (_) {}
+              Navigator.of(context).pop('share');
+            },
+            child: const Text('Share...'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == 'copy') {
+      await Clipboard.setData(ClipboardData(text: link));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Link copied to clipboard!')),
+      );
+    }
+    if (result == 'copy' || result == 'share') {
+      // Only increment if user actually copied/shared
+      if (currentUserId != null) {
+        await PostService().addShare(postId, currentUserId!);
+      }
+    }
+  }
+
+  // For comment icon animation
+  double _commentIconScale = 1.0;
+
+  // For comment count
+  int? _localCommentCount;
+
+  void _showCommentSheet(BuildContext context, String postId) async {
+    setState(() => _commentIconScale = 0.85);
+    await Future.delayed(const Duration(milliseconds: 80));
+    setState(() => _commentIconScale = 1.0);
+    // Show the bottom sheet and listen for result
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _CommentBottomSheetWithCount(
+        postId: postId,
+        onCountChanged: (count) {
+          setState(() => _localCommentCount = count);
+        },
+      ),
+    );
+    // Optionally handle result
+  }
+
   late String? currentUserId;
 
   @override
@@ -177,48 +267,26 @@ class _PostCardState extends State<PostCard> {
             ),
             const SizedBox(width: 10),
             // Comments
-            Row(
-              children: [
-                SvgPicture.asset(
-                  AppAssets.comment,
-                  height: 19,
-                  width: 19,
-                  color: AppColors.textDark,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  isPostModel
-                      ? (widget.post as Post).commentCount.toString()
-                      : widget.post["comments"],
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            _CommentIconWithCount(
+              postId: postId,
+              initialCount: isPostModel
+                  ? (widget.post as Post).commentCount
+                  : int.tryParse(widget.post["comments"].toString()) ?? 0,
+              localCount: _localCommentCount,
+              iconScale: _commentIconScale,
+              onTap: () => _showCommentSheet(context, postId),
             ),
+
             const SizedBox(width: 10),
-            // Shares (static for now)
-            Row(
-              children: [
-                SvgPicture.asset(
-                  AppAssets.share,
-                  height: 24,
-                  width: 24,
-                  color: AppColors.textDark,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  isPostModel
-                      ? "0"
-                      : widget.post[
-                          "shares"], // Static since shares not in Post model
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+
+            _ShareIconWithCount(
+              postId: postId,
+              iconScale: _shareIconScale,
+              onTap: () => _onShareTap(postId),
+              localCount: _localShareCount,
+              initialCount: isPostModel
+                  ? (widget.post as Post).shareCount
+                  : int.tryParse(widget.post["shares"].toString()) ?? 0,
             ),
           ],
         ),
@@ -272,5 +340,165 @@ class _PostCardState extends State<PostCard> {
       Get.toNamed(AppRoutes.xoriUserProfile,
           parameters: {'uid': tappedUserUid});
     }
+  }
+}
+
+// Standalone widget for animated comment icon and count
+class _CommentIconWithCount extends StatefulWidget {
+  final String postId;
+  final int initialCount;
+  final int? localCount;
+  final double iconScale;
+  final VoidCallback onTap;
+  const _CommentIconWithCount({
+    required this.postId,
+    required this.initialCount,
+    required this.localCount,
+    required this.iconScale,
+    required this.onTap,
+  });
+  @override
+  State<_CommentIconWithCount> createState() => _CommentIconWithCountState();
+}
+
+class _CommentIconWithCountState extends State<_CommentIconWithCount> {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: widget.iconScale,
+        duration: const Duration(milliseconds: 80),
+        child: Row(
+          children: [
+            SvgPicture.asset(
+              AppAssets.comment,
+              height: 19,
+              width: 19,
+              color: AppColors.textDark,
+            ),
+            const SizedBox(width: 4),
+            StreamBuilder<int>(
+              stream: _commentCountStream(widget.postId),
+              builder: (context, snapshot) {
+                final count =
+                    widget.localCount ?? snapshot.data ?? widget.initialCount;
+                return Text(
+                  count.toString(),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Stream comment count from Firestore
+  Stream<int> _commentCountStream(String postId) {
+    return FirebaseFirestore.instance
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .snapshots()
+        .map((snap) => snap.size);
+  }
+}
+
+// Bottom sheet with callback for comment count changes
+class _CommentBottomSheetWithCount extends StatefulWidget {
+  final String postId;
+  final ValueChanged<int> onCountChanged;
+  const _CommentBottomSheetWithCount(
+      {required this.postId, required this.onCountChanged});
+  @override
+  State<_CommentBottomSheetWithCount> createState() =>
+      _CommentBottomSheetWithCountState();
+}
+
+class _CommentBottomSheetWithCountState
+    extends State<_CommentBottomSheetWithCount> {
+  int _commentCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen to comment count
+    FirebaseFirestore.instance
+        .collection('posts')
+        .doc(widget.postId)
+        .collection('comments')
+        .snapshots()
+        .listen((snap) {
+      setState(() {
+        _commentCount = snap.size;
+      });
+      widget.onCountChanged(_commentCount);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CommentBottomSheet(postId: widget.postId);
+  }
+}
+
+// Animated share icon with live count
+class _ShareIconWithCount extends StatefulWidget {
+  final String postId;
+  final double iconScale;
+  final VoidCallback onTap;
+  final int? localCount;
+  final int initialCount;
+  const _ShareIconWithCount({
+    required this.postId,
+    required this.iconScale,
+    required this.onTap,
+    required this.localCount,
+    required this.initialCount,
+  });
+  @override
+  State<_ShareIconWithCount> createState() => _ShareIconWithCountState();
+}
+
+class _ShareIconWithCountState extends State<_ShareIconWithCount> {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: widget.iconScale,
+        duration: const Duration(milliseconds: 80),
+        child: Row(
+          children: [
+            SvgPicture.asset(
+              AppAssets.share,
+              height: 24,
+              width: 24,
+              color: AppColors.textDark,
+            ),
+            const SizedBox(width: 4),
+            StreamBuilder<int>(
+              stream: PostService().getShareCount(widget.postId),
+              builder: (context, snapshot) {
+                final count =
+                    widget.localCount ?? snapshot.data ?? widget.initialCount;
+                return Text(
+                  count.toString(),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

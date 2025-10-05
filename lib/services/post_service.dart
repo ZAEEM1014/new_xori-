@@ -2,6 +2,41 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 
 class PostService {
+  // Add a share record to the post's shares sub-collection
+  Future<void> addShare(String postId, String userId) async {
+    try {
+      await _firestore
+          .collection(_postsCollection)
+          .doc(postId)
+          .collection('shares')
+          .doc(userId)
+          .set({'sharedAt': FieldValue.serverTimestamp()});
+    } catch (e) {
+      throw Exception('Failed to share post: ${e.toString()}');
+    }
+  }
+
+  // Get the share count as a stream
+  Stream<int> getShareCount(String postId) {
+    return _firestore
+        .collection(_postsCollection)
+        .doc(postId)
+        .collection('shares')
+        .snapshots()
+        .map((snapshot) => snapshot.size);
+  }
+
+  // Check if a user has already shared the post
+  Future<bool> hasUserShared(String postId, String userId) async {
+    final doc = await _firestore
+        .collection(_postsCollection)
+        .doc(postId)
+        .collection('shares')
+        .doc(userId)
+        .get();
+    return doc.exists;
+  }
+
   // Returns a stream of the like count for a post
   Stream<int> getLikeCount(String postId) {
     return _firestore
