@@ -200,8 +200,8 @@ class AuthController extends GetxController {
   }
 
   void _checkLoginFormCompleteness() {
-    isLoginFormValid.value = loginEmail.value.trim().isNotEmpty &&
-        loginPassword.value.isNotEmpty;
+    isLoginFormValid.value =
+        loginEmail.value.trim().isNotEmpty && loginPassword.value.isNotEmpty;
   }
 
   // Check if signup form is valid after validation (used on button click)
@@ -258,31 +258,31 @@ class AuthController extends GetxController {
     // Clear validation errors when user starts typing
     usernameError.value = '';
   }
-  
+
   void updateSignUpEmail(String value) {
     signUpEmail.value = value;
     // Clear validation errors when user starts typing
     emailError.value = '';
   }
-  
+
   void updateSignUpPassword(String value) {
     signUpPassword.value = value;
     // Clear validation errors when user starts typing
     passwordError.value = '';
   }
-  
+
   void updateSignUpConfirmPassword(String value) {
     signUpConfirmPassword.value = value;
     // Clear validation errors when user starts typing
     confirmPasswordError.value = '';
   }
-  
+
   void updateLoginEmail(String value) {
     loginEmail.value = value;
     // Clear validation errors when user starts typing
     loginEmailError.value = '';
   }
-  
+
   void updateLoginPassword(String value) {
     loginPassword.value = value;
     // Clear validation errors when user starts typing
@@ -344,7 +344,7 @@ class AuthController extends GetxController {
 
     // Clear previous messages
     _clearMessages();
-    
+
     // Validate form only when button is clicked
     _validateSignUpForm();
 
@@ -411,7 +411,7 @@ class AuthController extends GetxController {
 
     // Clear previous messages
     _clearMessages();
-    
+
     // Validate form only when button is clicked
     _validateLoginForm();
 

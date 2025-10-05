@@ -1,4 +1,12 @@
 class UserModel {
+  /// Returns a map with only uid and profileImageUrl
+  Map<String, dynamic> toUidAndProfileImageMap() {
+    return {
+      'uid': uid,
+      'profileImageUrl': profileImageUrl,
+    };
+  }
+
   final String uid;
   final String username;
   final String email;

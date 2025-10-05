@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../constants/app_colors.dart';
@@ -173,17 +174,13 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
                     children: [
                       Expanded(
                         child: _FollowButton(
-                          currentUserId: Get.find<XoriUserProfileController>()
-                              .user
-                              .value
-                              .uid, // TODO: Replace with actual current user id from auth
+                          currentUserId: FirebaseAuth.instance.currentUser!.uid,
                           targetUser: FollowUser(
                             userId: controller.user.value.uid,
                             username: controller.user.value.username,
                             userPhotoUrl:
                                 controller.user.value.profileImageUrl ?? '',
-                            followedAt: Timestamp
-                                .now(), // Not used on follow, but required by model
+                            followedAt: Timestamp.now(),
                           ),
                         ),
                       ),

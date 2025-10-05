@@ -2,6 +2,44 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/follow_user_model.dart';
 
 class FollowService {
+  /// Debug: Log all following and followers for a user
+  Future<void> debugUserFollowCollections(String userId) async {
+    try {
+      // Log following
+      final followingSnap = await _firestore
+          .collection(usersCollection)
+          .doc(userId)
+          .collection(followingSub)
+          .get();
+      print('--- [DEBUG] FOLLOWING for user $userId ---');
+      if (followingSnap.docs.isEmpty) {
+        print('No following users.');
+      } else {
+        for (final doc in followingSnap.docs) {
+          print('Following: ${doc.id} | Data: ${doc.data()}');
+        }
+      }
+
+      // Log followers
+      final followersSnap = await _firestore
+          .collection(usersCollection)
+          .doc(userId)
+          .collection(followersSub)
+          .get();
+      print('--- [DEBUG] FOLLOWERS for user $userId ---');
+      if (followersSnap.docs.isEmpty) {
+        print('No followers.');
+      } else {
+        for (final doc in followersSnap.docs) {
+          print('Follower: ${doc.id} | Data: ${doc.data()}');
+        }
+      }
+      print('--- [DEBUG] END for user $userId ---');
+    } catch (e) {
+      print('[DEBUG] Error debugging follow collections for $userId: $e');
+    }
+  }
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String usersCollection = 'users';
   static const String followersSub = 'followers';
@@ -43,11 +81,19 @@ class FollowService {
             .collection(followingSub)
             .doc(targetUser.userId)
             .set({
-          'uid': targetUser.userId,
+          'userId': targetUser.userId,
           'username': targetUser.username,
-          'profileImageUrl': targetUser.userPhotoUrl,
+          'userPhotoUrl': targetUser.userPhotoUrl,
           'followedAt': now,
         });
+        // Fetch current user's username and profileImageUrl
+        final currentUserDoc = await _firestore
+            .collection(usersCollection)
+            .doc(currentUserId)
+            .get();
+        final currentUserData = currentUserDoc.data() ?? {};
+        final currentUsername = currentUserData['username'] ?? '';
+        final currentUserPhoto = currentUserData['profileImageUrl'] ?? '';
         // Add currentUser to targetUser's followers
         await _firestore
             .collection(usersCollection)
@@ -55,10 +101,9 @@ class FollowService {
             .collection(followersSub)
             .doc(currentUserId)
             .set({
-          'uid': currentUserId,
-          // You may want to fetch current user's username/photo for display
-          'username': '',
-          'profileImageUrl': '',
+          'userId': currentUserId,
+          'username': currentUsername,
+          'userPhotoUrl': currentUserPhoto,
           'followedAt': now,
         });
       } else {
@@ -81,7 +126,7 @@ class FollowService {
     }
   }
 
-  /// Get list of user IDs that the current user is following
+  /// Get list of user IDs that the current user is following, with debug logging
   Future<List<String>> getFollowingUserIds(String currentUserId) async {
     try {
       final followingSnap = await _firestore
@@ -90,9 +135,11 @@ class FollowService {
           .collection(followingSub)
           .get();
 
-      return followingSnap.docs.map((doc) => doc.id).toList();
+      final ids = followingSnap.docs.map((doc) => doc.id).toList();
+      print('[FollowService] User $currentUserId is following: $ids');
+      return ids;
     } catch (e) {
-      print('Error fetching following user IDs: $e');
+      print('Error fetching following user IDs for $currentUserId: $e');
       return [];
     }
   }

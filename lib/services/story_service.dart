@@ -8,13 +8,25 @@ import 'package:rxdart/rxdart.dart';
 import '../models/story_model.dart';
 
 class StoryService extends GetxService {
+  Future<StoryModel?> fetchStoryById(String storyId) async {
+    final doc = await _firestore.collection('stories').doc(storyId).get();
+    if (doc.exists && doc.data() != null) {
+      return StoryModel.fromMap(doc.data()!, doc.id);
+    }
+    return null;
+  }
+
   /// Fetch all active (non-expired) stories for users the current user is following
   Future<List<StoryModel>> getActiveStoriesOfFollowingUsers() async {
     final user = _auth.currentUser;
     if (user == null) return [];
     final followService = FollowService();
     final followingIds = await followService.getFollowingUserIds(user.uid);
-    if (followingIds.isEmpty) return [];
+    print('[StoryService] Following IDs for user ${user.uid}: $followingIds');
+    if (followingIds.isEmpty) {
+      print('[StoryService] No following users found for user ${user.uid}');
+      return [];
+    }
     final now = DateTime.now();
     final storiesSnap = await _firestore
         .collection('stories')
@@ -23,6 +35,8 @@ class StoryService extends GetxService {
         .orderBy('expiresAt', descending: false)
         .orderBy('postedAt', descending: true)
         .get();
+    print(
+        '[StoryService] Stories fetched for following users: ${storiesSnap.docs.length}');
     return storiesSnap.docs
         .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
         .toList();
@@ -42,14 +56,13 @@ class StoryService extends GetxService {
       return querySnap.docs
           .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
           .toList();
-    } catch (e, stack) {
+    } catch (e) {
       print('Error fetching active stories for user $uid: $e');
       return [];
     }
   }
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Creates a story document with a Cloudinary image URL and 24h expiry
@@ -120,8 +133,7 @@ class StoryService extends GetxService {
           .orderBy('postedAt', descending: true)
           .snapshots();
     }).map((storiesSnap) => storiesSnap.docs
-        .map((doc) =>
-            StoryModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+        .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
         .toList());
   }
 

@@ -18,6 +18,7 @@ class AppAssets {
   static const String cameraIcon = 'assets/icons/Change Camera.svg';
   static const String uploadCloud = 'assets/icons/upload_cloud.svg';
   static const String tagIcon = 'assets/icons/tag.svg';
+  static const String send = 'assets/icons/send.svg';
 
   // Images
   static const String ellipse74 = 'assets/images/Ellipse 74.png';

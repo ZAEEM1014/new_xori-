@@ -1,42 +1,28 @@
-import 'dart:async';
 import 'package:get/get.dart';
+import 'package:xori/models/story_model.dart';
+import 'package:xori/services/story_service.dart';
 
 class StoryController extends GetxController {
-  var progress = 0.0.obs;
-  Timer? _timer;
-  bool isPaused = false;
-
-  final int durationInSeconds = 10; // 30 sec story
-
-  void startProgress() {
-    progress.value = 0.0;
-    const tick = Duration(milliseconds: 100);
-    _timer = Timer.periodic(tick, (timer) {
-      if (!isPaused) {
-        progress.value += tick.inMilliseconds / (durationInSeconds * 1000);
-        if (progress.value >= 1.0) {
-          timer.cancel();
-          Get.back(); // Auto close when time ends
-        }
-      }
-    });
-  }
-
-  void pauseProgress() {
-    isPaused = true;
-  }
-
-  void resumeProgress() {
-    isPaused = false;
-  }
-
-  void stopProgress() {
-    _timer?.cancel();
-  }
+  final StoryService _storyService = StoryService();
+  final Rx<StoryModel?> story = Rx<StoryModel?>(null);
+  final RxBool isLoading = true.obs;
 
   @override
-  void onClose() {
-    stopProgress();
-    super.onClose();
+  void onInit() {
+    super.onInit();
+    final storyId = Get.arguments?['storyId'] as String?;
+    if (storyId != null) {
+      fetchStory(storyId);
+    }
+  }
+
+  Future<void> fetchStory(String storyId) async {
+    isLoading.value = true;
+    try {
+      final doc = await _storyService.fetchStoryById(storyId);
+      story.value = doc;
+    } finally {
+      isLoading.value = false;
+    }
   }
 }

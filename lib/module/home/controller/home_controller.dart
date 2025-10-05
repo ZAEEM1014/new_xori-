@@ -1,13 +1,19 @@
 import 'package:get/get.dart';
-import 'package:xori/data/demo_top_bar.dart';
 import 'package:xori/services/post_service.dart';
 import 'package:xori/services/story_service.dart';
+import 'package:xori/services/follow_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:xori/models/post_model.dart';
 import 'package:xori/models/story_model.dart';
 import 'dart:async';
 import 'dart:developer' as dev;
+import 'package:xori/services/firestore_service.dart';
+import 'package:xori/constants/app_assets.dart';
 
 class HomeController extends GetxController {
+  final FirestoreService _firestoreService = FirestoreService();
+  // For debugging follow collections
+  final FollowService _followService = FollowService();
   final PostService _postService = PostService();
   final StoryService _storyService = StoryService();
 
@@ -16,7 +22,7 @@ class HomeController extends GetxController {
   StreamSubscription<List<StoryModel>>? _currentUserStoriesSubscription;
 
   // Top bar is a single map
-  final RxMap<String, dynamic> topBar = demoTopBar.obs;
+  final RxMap<String, dynamic> topBar = <String, dynamic>{}.obs;
 
   // Stories data - functional implementation
   final RxList<Map<String, dynamic>> statuses = <Map<String, dynamic>>[].obs;
@@ -33,8 +39,52 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _fetchAndSetCurrentUserTopBar();
     _startPostsStream();
     _initializeStories();
+    _debugCurrentUserFollowCollections();
+  }
+
+  void _fetchAndSetCurrentUserTopBar() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userModel = await _firestoreService.getUser(user.uid);
+      if (userModel != null) {
+        topBar['profilePic'] = userModel.profileImageUrl ?? '';
+        topBar['name'] = userModel.username;
+        topBar['greeting'] = 'Hey';
+        topBar['icons'] = [
+          {
+            'path': AppAssets.send,
+            'height': 24.0,
+            'width': 24.0,
+            'isSend': true,
+          },
+          {
+            'path': AppAssets.homeheart,
+            'height': 24.0,
+            'width': 24.0,
+            'isSend': false,
+          },
+        ];
+        topBar.refresh();
+      }
+    }
+  }
+
+  void _debugCurrentUserFollowCollections() async {
+    try {
+      // Wait for a short delay to ensure FirebaseAuth is ready
+      await Future.delayed(const Duration(seconds: 1));
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await _followService.debugUserFollowCollections(user.uid);
+      } else {
+        print('[DEBUG] No current user found for follow debug.');
+      }
+    } catch (e) {
+      print('[DEBUG] Error in _debugCurrentUserFollowCollections: $e');
+    }
   }
 
   @override
@@ -230,15 +280,16 @@ class HomeController extends GetxController {
   void handleStoryTap(Map<String, dynamic> status) {
     try {
       final bool isAdd = status['isAdd'] == 'true';
-
       if (isAdd) {
         dev.log('➕ Navigating to add story', name: 'StoryController');
         Get.toNamed('/addStory');
       } else {
-        dev.log('👁️ Opening story viewer for: ${status['name']}',
-            name: 'StoryController');
-        // Navigate to story viewer with the story data
-        Get.toNamed('/storyView', arguments: status);
+        final storyModel = status['storyModel'] as StoryModel?;
+        if (storyModel != null) {
+          dev.log('👁️ Opening story viewer for: ${storyModel.storyId}',
+              name: 'StoryController');
+          Get.toNamed('/storyView', arguments: {'storyId': storyModel.storyId});
+        }
       }
     } catch (e) {
       dev.log('❌ Error handling story tap: $e', name: 'StoryController');

@@ -1,3 +1,5 @@
+import '../module/storyview/view/story_screen.dart';
+import '../module/storyview/binding/story_binding.dart';
 import 'package:xori/module/settings/binding/settings_binding.dart';
 import 'package:xori/module/settings/view/settings_screen.dart';
 
@@ -16,8 +18,6 @@ import '../module/onboarding/view/onboarding_view.dart';
 import '../module/home/view/home_page.dart';
 import '../module/chat_list/view/chat_list_screen.dart';
 import '../module/add_story/view/add_story_screen.dart';
-import '../module/add_post/view/add_post_screen.dart';
-import '../module/add_post/binding/add_post_binding.dart';
 
 class AppPages {
   static final pages = [
@@ -56,9 +56,9 @@ class AppPages {
       binding: SettingsBinding(),
     ),
     GetPage(
-      name: AppRoutes.addPost,
-      page: () => const AddPostScreen(),
-      binding: AddPostBinding(),
+      name: '/storyView',
+      page: () => StoryViewScreen(),
+      binding: StoryBinding(),
     ),
   ];
 }
