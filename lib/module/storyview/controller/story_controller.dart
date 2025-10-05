@@ -4,15 +4,22 @@ import 'package:xori/services/story_service.dart';
 
 class StoryController extends GetxController {
   final StoryService _storyService = StoryService();
-  final Rx<StoryModel?> story = Rx<StoryModel?>(null);
+  final RxList<StoryModel> stories = <StoryModel>[].obs;
+  final RxInt currentIndex = 0.obs;
   final RxBool isLoading = true.obs;
 
   @override
   void onInit() {
     super.onInit();
-    final storyId = Get.arguments?['storyId'] as String?;
-    if (storyId != null) {
-      fetchStory(storyId);
+    final args = Get.arguments;
+    final List<StoryModel>? storyList = args?['stories'] as List<StoryModel>?;
+    final int? initialIndex = args?['initialIndex'] as int?;
+    if (storyList != null && storyList.isNotEmpty) {
+      stories.assignAll(storyList);
+      currentIndex.value = initialIndex ?? 0;
+      isLoading.value = false;
+    } else {
+      isLoading.value = false;
     }
   }
 
@@ -20,9 +27,28 @@ class StoryController extends GetxController {
     isLoading.value = true;
     try {
       final doc = await _storyService.fetchStoryById(storyId);
-      story.value = doc;
+      if (doc != null) {
+        stories.assignAll([doc]);
+        currentIndex.value = 0;
+      }
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  void nextStory() {
+    if (currentIndex.value < stories.length - 1) {
+      currentIndex.value++;
+    } else {
+      Get.back();
+    }
+  }
+
+  void previousStory() {
+    if (currentIndex.value > 0) {
+      currentIndex.value--;
+    } else {
+      Get.back();
     }
   }
 }

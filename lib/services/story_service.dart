@@ -37,9 +37,15 @@ class StoryService extends GetxService {
         .get();
     print(
         '[StoryService] Stories fetched for following users: ${storiesSnap.docs.length}');
-    return storiesSnap.docs
+    // Ensure distinct stories by storyId
+    final allStories = storiesSnap.docs
         .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
         .toList();
+    final Map<String, StoryModel> uniqueStories = {};
+    for (final story in allStories) {
+      uniqueStories[story.storyId] = story;
+    }
+    return uniqueStories.values.toList();
   }
 
   /// Fetch all active (non-expired) stories for a given user by uid.
@@ -53,9 +59,15 @@ class StoryService extends GetxService {
           .orderBy('expiresAt', descending: false)
           .orderBy('postedAt', descending: true)
           .get();
-      return querySnap.docs
+      // Ensure distinct stories by storyId
+      final allStories = querySnap.docs
           .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
           .toList();
+      final Map<String, StoryModel> uniqueStories = {};
+      for (final story in allStories) {
+        uniqueStories[story.storyId] = story;
+      }
+      return uniqueStories.values.toList();
     } catch (e) {
       print('Error fetching active stories for user $uid: $e');
       return [];

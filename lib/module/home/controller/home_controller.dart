@@ -276,8 +276,8 @@ class HomeController extends GetxController {
     }
   }
 
-  /// Handle story tap based on story type
-  void handleStoryTap(Map<String, dynamic> status) {
+  /// Handle story tap: fetch all active stories for the tapped user and show in story screen
+  void handleStoryTap(Map<String, dynamic> status) async {
     try {
       final bool isAdd = status['isAdd'] == 'true';
       if (isAdd) {
@@ -286,9 +286,24 @@ class HomeController extends GetxController {
       } else {
         final storyModel = status['storyModel'] as StoryModel?;
         if (storyModel != null) {
-          dev.log('👁️ Opening story viewer for: ${storyModel.storyId}',
+          dev.log(
+              '👁️ Fetching all active stories for user: ${storyModel.userId}',
               name: 'StoryController');
-          Get.toNamed('/storyView', arguments: {'storyId': storyModel.storyId});
+          final stories =
+              await _storyService.getActiveStoriesForUser(storyModel.userId);
+          // Debug print to verify uniqueness
+          for (var s in stories) {
+            print(
+                '[DEBUG] Story: id=${s.storyId}, url=${s.storyUrl}, postedAt=${s.postedAt}');
+          }
+          final int initialIndex =
+              stories.indexWhere((s) => s.storyId == storyModel.storyId);
+          if (stories.isNotEmpty && initialIndex != -1) {
+            Get.toNamed('/storyView', arguments: {
+              'stories': stories,
+              'initialIndex': initialIndex,
+            });
+          }
         }
       }
     } catch (e) {
