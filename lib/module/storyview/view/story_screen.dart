@@ -9,9 +9,13 @@ class StoryViewScreen extends StatefulWidget {
   _StoryViewScreenState createState() => _StoryViewScreenState();
 }
 
-class _StoryViewScreenState extends State<StoryViewScreen> {
+class _StoryViewScreenState extends State<StoryViewScreen>
+    with TickerProviderStateMixin {
   late PageController _pageController;
   late StoryController controller;
+  late List<AnimationController> _progressControllers;
+  bool _isHolding = false;
+  static const storyDuration = Duration(seconds: 8);
 
   @override
   void initState() {
@@ -19,14 +23,82 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
     controller = Get.find<StoryController>();
     _pageController =
         PageController(initialPage: controller.currentIndex.value);
+    _initProgressControllers();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     });
   }
 
+  void _initProgressControllers() {
+    _progressControllers = List.generate(
+      controller.stories.length,
+      (i) => AnimationController(
+        vsync: this,
+        duration: storyDuration,
+      ),
+    );
+    // Start the current story's animation
+    if (_progressControllers.isNotEmpty) {
+      _progressControllers[controller.currentIndex.value].forward();
+      _progressControllers[controller.currentIndex.value]
+          .addStatusListener(_handleAnimationStatus);
+    }
+  }
+
+  void _handleAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed && !_isHolding) {
+      _goToNextStory();
+    }
+  }
+
+  void _goToNextStory() {
+    if (controller.currentIndex.value < controller.stories.length - 1) {
+      _progressControllers[controller.currentIndex.value]
+          .removeStatusListener(_handleAnimationStatus);
+      controller.nextStory();
+      _pageController.nextPage(
+          duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+      _progressControllers[controller.currentIndex.value].forward(from: 0);
+      _progressControllers[controller.currentIndex.value]
+          .addStatusListener(_handleAnimationStatus);
+    } else {
+      Get.back();
+    }
+  }
+
+  void _goToPreviousStory() {
+    if (controller.currentIndex.value > 0) {
+      _progressControllers[controller.currentIndex.value]
+          .removeStatusListener(_handleAnimationStatus);
+      controller.previousStory();
+      _pageController.previousPage(
+          duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+      _progressControllers[controller.currentIndex.value].forward(from: 0);
+      _progressControllers[controller.currentIndex.value]
+          .addStatusListener(_handleAnimationStatus);
+    } else {
+      Get.back();
+    }
+  }
+
+  void _pauseProgress() {
+    _isHolding = true;
+    _progressControllers[controller.currentIndex.value].stop();
+  }
+
+  void _resumeProgress() {
+    _isHolding = false;
+    _progressControllers[controller.currentIndex.value].forward();
+  }
+
   @override
   void dispose() {
+    for (final c in _progressControllers) {
+      c.dispose();
+    }
     _pageController.dispose();
+    // Restore system bar for other screens
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
@@ -47,6 +119,13 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
                   style: TextStyle(color: Colors.white))),
         );
       }
+      // If stories changed, re-init progress controllers
+      if (_progressControllers.length != controller.stories.length) {
+        for (final c in _progressControllers) {
+          c.dispose();
+        }
+        _initProgressControllers();
+      }
       // Sync page controller with currentIndex
       if (_pageController.hasClients &&
           controller.currentIndex.value != _pageController.page?.round()) {
@@ -58,31 +137,28 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
           onTapUp: (details) {
             final width = MediaQuery.of(context).size.width;
             if (details.localPosition.dx < width / 3) {
-              if (controller.currentIndex.value > 0) {
-                controller.previousStory();
-                _pageController.previousPage(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeInOut);
-              } else {
-                Get.back();
-              }
+              _goToPreviousStory();
             } else if (details.localPosition.dx > 2 * width / 3) {
-              if (controller.currentIndex.value <
-                  controller.stories.length - 1) {
-                controller.nextStory();
-                _pageController.nextPage(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeInOut);
-              } else {
-                Get.back();
-              }
+              _goToNextStory();
             }
           },
+          onLongPressStart: (_) => _pauseProgress(),
+          onLongPressEnd: (_) => _resumeProgress(),
           child: PageView.builder(
             controller: _pageController,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: controller.stories.length,
-            onPageChanged: (index) => controller.currentIndex.value = index,
+            onPageChanged: (index) {
+              // Pause previous, start new
+              for (final c in _progressControllers) {
+                c.stop();
+                c.removeStatusListener(_handleAnimationStatus);
+              }
+              controller.currentIndex.value = index;
+              _progressControllers[index].forward(from: 0);
+              _progressControllers[index]
+                  .addStatusListener(_handleAnimationStatus);
+            },
             itemBuilder: (context, index) {
               final story = controller.stories[index];
               return Stack(
@@ -138,7 +214,7 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
                       ),
                     ),
                   ),
-                  // Gradient Progress Bar
+                  // Animated Gradient Progress Bar (thinner)
                   Positioned(
                     top: 50,
                     left: 0,
@@ -146,18 +222,38 @@ class _StoryViewScreenState extends State<StoryViewScreen> {
                     child: Row(
                       children: List.generate(controller.stories.length, (i) {
                         return Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            height: 4,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(2),
-                              gradient: i <= controller.currentIndex.value
-                                  ? AppColors.appGradient
-                                  : null,
-                              color: i <= controller.currentIndex.value
-                                  ? null
-                                  : Colors.white30,
-                            ),
+                          child: AnimatedBuilder(
+                            animation: _progressControllers[i],
+                            builder: (context, child) {
+                              double value = 0;
+                              if (i < controller.currentIndex.value) {
+                                value = 1;
+                              } else if (i == controller.currentIndex.value) {
+                                value = _progressControllers[i].value;
+                              }
+                              return Container(
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 1),
+                                height: 2,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(1),
+                                  color: Colors.white.withOpacity(
+                                      0.35), // Semi-transparent white background
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: FractionallySizedBox(
+                                    widthFactor: value,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(1),
+                                        gradient: AppColors.appGradient,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         );
                       }),
