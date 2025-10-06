@@ -48,14 +48,19 @@ class MessageService {
     String? caption,
   }) async {
     try {
-      // Upload image to Cloudinary
-      final imageUrl = await _cloudinaryService.uploadImage(imageFile);
+      // Upload image to Cloudinary in chat_images folder
+      final imageUrl = await _cloudinaryService.uploadImage(imageFile,
+          folder: 'xori_chat_images');
+
+      if (imageUrl == null) {
+        throw Exception('Failed to upload image to Cloudinary');
+      }
 
       final message = MessageModel(
         id: '',
         senderId: senderId,
         receiverId: receiverId,
-        content: caption ?? 'Image',
+        content: caption ?? '',
         type: 'image',
         timestamp: Timestamp.now(),
         isRead: false,
@@ -66,7 +71,8 @@ class MessageService {
       await _firestore.collection('messages').add(message.toMap());
 
       // Update both users' chat lists
-      await _updateChatLists(senderId, receiverId, 'Image', message.timestamp);
+      await _updateChatLists(
+          senderId, receiverId, '📷 Photo', message.timestamp);
 
       print('[DEBUG] MessageService: Image message sent successfully');
     } catch (e) {

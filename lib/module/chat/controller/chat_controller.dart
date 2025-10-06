@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../models/message_model.dart';
 import '../../../services/message_service.dart';
@@ -51,7 +52,25 @@ class ChatController extends GetxController {
       _messageService.getMessagesStream(currentUserId, contactId.value).listen(
         (messageList) {
           try {
-            messages.value = messageList;
+            // Remove temporary/optimistic messages when real messages arrive
+            final tempMessages = messages
+                .where((msg) =>
+                    msg.id.startsWith('temp_') ||
+                    msg.id.startsWith('temp_img_'))
+                .toList();
+
+            // Merge real messages with any remaining temp messages
+            final realMessages = messageList
+                .where((msg) =>
+                    !msg.id.startsWith('temp_') &&
+                    !msg.id.startsWith('temp_img_'))
+                .toList();
+
+            // Combine and sort by timestamp
+            final allMessages = [...realMessages, ...tempMessages];
+            allMessages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+            messages.value = allMessages;
             isLoading.value = false;
 
             // Mark messages as read
@@ -82,6 +101,20 @@ class ChatController extends GetxController {
 
       isSending.value = true;
 
+      // Create optimistic message for immediate UI update
+      final optimisticMessage = MessageModel(
+        id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        senderId: currentUserId,
+        receiverId: contactId.value,
+        content: content.trim(),
+        type: 'text',
+        timestamp: Timestamp.now(),
+        isRead: false,
+      );
+
+      // Add to local list immediately for optimistic UI
+      messages.add(optimisticMessage);
+
       await _messageService.sendTextMessage(
         senderId: currentUserId,
         receiverId: contactId.value,
@@ -91,6 +124,10 @@ class ChatController extends GetxController {
       isSending.value = false;
     } catch (e) {
       print('[DEBUG] ChatController: Error sending text message: $e');
+
+      // Remove optimistic message on failure
+      messages.removeWhere((msg) => msg.id.startsWith('temp_'));
+
       isSending.value = false;
       Get.snackbar(
         'Error',
@@ -113,6 +150,21 @@ class ChatController extends GetxController {
 
       isSending.value = true;
 
+      // Create optimistic message for immediate UI update with loading state
+      final optimisticMessage = MessageModel(
+        id: 'temp_img_${DateTime.now().millisecondsSinceEpoch}',
+        senderId: currentUserId,
+        receiverId: contactId.value,
+        content: 'Sending image...',
+        type: 'image',
+        timestamp: Timestamp.now(),
+        isRead: false,
+        mediaUrl: image.path, // Temporary local path for preview
+      );
+
+      // Add to local list immediately for optimistic UI
+      messages.add(optimisticMessage);
+
       await _messageService.sendImageMessage(
         senderId: currentUserId,
         receiverId: contactId.value,
@@ -122,6 +174,10 @@ class ChatController extends GetxController {
       isSending.value = false;
     } catch (e) {
       print('[DEBUG] ChatController: Error sending image message: $e');
+
+      // Remove optimistic message on failure
+      messages.removeWhere((msg) => msg.id.startsWith('temp_img_'));
+
       isSending.value = false;
       Get.snackbar(
         'Error',

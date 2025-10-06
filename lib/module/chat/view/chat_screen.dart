@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:xori/constants/app_colors.dart';
@@ -127,15 +128,17 @@ class ChatScreen extends GetView<ChatController> {
 
                   if (message.type == 'image') {
                     return isSent
-                        ? _buildSentMessage(
+                        ? _buildSentImageMessage(
                             message.content,
                             timeString,
-                            image: message.mediaUrl,
+                            imageUrl: message.mediaUrl,
+                            isOptimistic: message.id.startsWith('temp_img_'),
                           )
-                        : _buildReceivedMessage(
+                        : _buildReceivedImageMessage(
                             message.content,
                             timeString,
-                            image: message.mediaUrl,
+                            imageUrl: message.mediaUrl,
+                            isOptimistic: message.id.startsWith('temp_img_'),
                           );
                   } else {
                     return isSent
@@ -234,7 +237,247 @@ class ChatScreen extends GetView<ChatController> {
     }
   }
 
-  Widget _buildReceivedMessage(String message, String time, {String? image}) {
+  Widget _buildReceivedMessage(String message, String time) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: Colors.grey.shade200,
+            backgroundImage: controller.contactAvatar.value.isNotEmpty
+                ? NetworkImage(controller.contactAvatar.value)
+                : null,
+            child: controller.contactAvatar.value.isEmpty
+                ? Text(
+                    controller.contactName.value.isNotEmpty
+                        ? controller.contactName.value[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  constraints: BoxConstraints(maxWidth: Get.width * 0.6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFFEAEAEA)),
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(16),
+                      bottomLeft: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 4),
+                  child: Text(
+                    time,
+                    style: const TextStyle(color: Colors.grey, fontSize: 10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSentMessage(String message, String time) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Container(
+              constraints: BoxConstraints(maxWidth: Get.width * 0.6),
+              decoration: BoxDecoration(
+                color: AppColors.chatBubbleYellow,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Text(
+                  message,
+                  style: const TextStyle(color: Colors.black, fontSize: 14),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 4, right: 4),
+              child: Text(
+                time,
+                style: const TextStyle(color: Colors.grey, fontSize: 10),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSentImageMessage(String message, String time,
+      {String? imageUrl, bool isOptimistic = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Container(
+              constraints: BoxConstraints(maxWidth: Get.width * 0.6),
+              decoration: BoxDecoration(
+                color: AppColors.chatBubbleYellow,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (imageUrl != null)
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                          ),
+                          child: isOptimistic && !imageUrl.startsWith('http')
+                              ? Image.file(
+                                  File(imageUrl),
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: 200,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      height: 200,
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.broken_image,
+                                          size: 50),
+                                    );
+                                  },
+                                )
+                              : Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: 200,
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Container(
+                                      height: 200,
+                                      color: Colors.grey[100],
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          value: loadingProgress
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      height: 200,
+                                      color: Colors.grey[300],
+                                      child: const Icon(Icons.broken_image,
+                                          size: 50),
+                                    );
+                                  },
+                                ),
+                        ),
+                        if (isOptimistic)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.3),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                ),
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  if (message.isNotEmpty &&
+                      message != 'Sending image...' &&
+                      message != 'Image')
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Text(
+                        message,
+                        style:
+                            const TextStyle(color: Colors.black, fontSize: 14),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 4, right: 4),
+              child: Text(
+                time,
+                style: const TextStyle(color: Colors.grey, fontSize: 10),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReceivedImageMessage(String message, String time,
+      {String? imageUrl, bool isOptimistic = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -277,15 +520,33 @@ class ChatScreen extends GetView<ChatController> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (image != null)
+                      if (imageUrl != null)
                         ClipRRect(
                           borderRadius: const BorderRadius.only(
                             topRight: Radius.circular(16),
                           ),
                           child: Image.network(
-                            image,
+                            imageUrl,
                             fit: BoxFit.cover,
                             width: double.infinity,
+                            height: 200,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                height: 200,
+                                color: Colors.grey[100],
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes !=
+                                            null
+                                        ? loadingProgress
+                                                .cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                ),
+                              );
+                            },
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
                                 height: 200,
@@ -295,19 +556,20 @@ class ChatScreen extends GetView<ChatController> {
                             },
                           ),
                         ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Text(
-                          message,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 14,
+                      if (message.isNotEmpty && message != 'Image')
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          child: Text(
+                            message,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -322,71 +584,6 @@ class ChatScreen extends GetView<ChatController> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSentMessage(String message, String time, {String? image}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Container(
-              constraints: BoxConstraints(maxWidth: Get.width * 0.6),
-              decoration: BoxDecoration(
-                color: AppColors.chatBubbleYellow,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (image != null)
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                      ),
-                      child: Image.network(
-                        image,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            height: 200,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.broken_image, size: 50),
-                          );
-                        },
-                      ),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Text(
-                      message,
-                      style: const TextStyle(color: Colors.black, fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 4, right: 4),
-              child: Text(
-                time,
-                style: const TextStyle(color: Colors.grey, fontSize: 10),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
