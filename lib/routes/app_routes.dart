@@ -10,4 +10,5 @@ class AppRoutes {
   static const String addStory = '/addStory';
   static const String chat = '/chat';
   static const String addPost = '/addPost';
+  static const String changePassword = '/changePassword';
 }

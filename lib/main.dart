@@ -13,6 +13,7 @@ import 'package:xori/routes/app_pages.dart';
 import 'package:xori/routes/app_routes.dart';
 import 'package:xori/services/onboarding_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:xori/module/auth/controller/change_password_controller.dart';
 
 void main() async {
   try {
@@ -46,6 +47,7 @@ void main() async {
   Get.put(HomeController(), permanent: true);
   Get.put(ProfileController(), permanent: true);
   Get.put(AddStoryController(), permanent: true);
+  Get.put(ChangePasswordController(), permanent: true);
   runApp(const MyApp());
 }
 

@@ -6,6 +6,26 @@ import 'package:xori/models/user_model.dart';
 import 'package:xori/services/firestore_service.dart';
 
 class AuthService {
+  // Change password (requires re-authentication)
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw Exception('No user is currently signed in.');
+    }
+    try {
+      // Re-authenticate
+      final cred = EmailAuthProvider.credential(
+          email: user.email!, password: oldPassword);
+      await user.reauthenticateWithCredential(cred);
+      // Update password
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('Failed to change password: ${e.toString()}');
+    }
+  }
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   // Use GetX to retrieve the singleton instance
   final CloudinaryService _cloudinaryService = Get.find<CloudinaryService>();

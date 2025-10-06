@@ -13,6 +13,8 @@ import 'package:xori/module/navbar_wrapper/view/navwrapper_screen.dart';
 import '../module/auth/view/login_view.dart';
 import '../module/auth/view/signup_view.dart';
 import '../module/auth/bindings/auth_binding.dart';
+import '../module/auth/view/change_password_view.dart';
+import '../module/auth/binding/change_password_binding.dart';
 import 'app_routes.dart';
 import '../module/onboarding/view/onboarding_view.dart';
 import '../module/home/view/home_page.dart';
@@ -59,6 +61,11 @@ class AppPages {
       name: '/storyView',
       page: () => StoryViewScreen(),
       binding: StoryBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.changePassword,
+      page: () => const ChangePasswordView(),
+      binding: ChangePasswordBinding(),
     ),
   ];
 }

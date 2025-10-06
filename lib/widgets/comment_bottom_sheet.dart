@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/comment_model.dart';
 import '../services/comment_service.dart';
+import '../constants/app_colors.dart';
 
 class CommentBottomSheet extends StatefulWidget {
   final String postId;
@@ -107,8 +108,10 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     itemCount: comments.length,
+                    reverse:
+                        true, // Show newest at bottom, prevent overflow at top
                     itemBuilder: (context, i) {
-                      final c = comments[i];
+                      final c = comments[comments.length - 1 - i];
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 6.0),
                         child: Row(
@@ -172,31 +175,51 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      minLines: 1,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        hintText: 'Add a comment...',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(width: 2, style: BorderStyle.solid),
+                        gradient: AppColors.appGradient,
                       ),
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendComment(),
+                      child: Container(
+                        // Inner container for white background and padding
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(7),
+                          color: Colors.white,
+                        ),
+                        child: TextField(
+                          controller: _controller,
+                          minLines: 1,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            hintText: 'Add a comment...',
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                          ),
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _sendComment(),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton(
-                    icon: _isSending
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send),
-                    onPressed: _isSending ? null : _sendComment,
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AppColors.appGradient,
+                    ),
+                    child: IconButton(
+                      icon: _isSending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send, color: Colors.white),
+                      onPressed: _isSending ? null : _sendComment,
+                    ),
                   ),
                 ],
               ),

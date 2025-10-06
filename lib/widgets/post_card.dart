@@ -17,6 +17,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'comment_bottom_sheet.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
+import 'saved_button.dart';
 
 class PostCard extends StatefulWidget {
   final dynamic
@@ -171,11 +172,7 @@ class _PostCardState extends State<PostCard> {
         subtitle: Text(isPostModel
             ? _formatTimestamp((widget.post as Post).createdAt.toDate())
             : widget.post["time"]),
-        trailing: SvgPicture.asset(
-          AppAssets.favourite,
-          height: 24,
-          width: 24,
-        ),
+        trailing: SavedButton(postId: postId, size: 20),
       ),
     );
 

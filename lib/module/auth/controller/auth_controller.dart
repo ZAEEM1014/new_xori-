@@ -37,6 +37,10 @@ class AuthController extends GetxController {
   // Form fields - Sign Up
   final RxBool isSignUpPasswordVisible = false.obs;
   final RxBool isSignUpConfirmPasswordVisible = false.obs;
+  // Controllers for password fields
+  final loginPasswordController = TextEditingController();
+  final signUpPasswordController = TextEditingController();
+  final signUpConfirmPasswordController = TextEditingController();
   final Rxn<File> profileImage = Rxn<File>();
   final RxString signUpUsername = ''.obs;
   final RxString signUpEmail = ''.obs;

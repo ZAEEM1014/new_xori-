@@ -79,7 +79,9 @@ class SettingsScreen extends StatelessWidget {
             leading: Icon(Icons.lock_outline, color: AppColors.textLight),
             title: const Text('Change Password'),
             trailing: _arrowIcon(),
-            onTap: () {},
+            onTap: () {
+              Get.toNamed('/changePassword');
+            },
           ),
         ],
       ),

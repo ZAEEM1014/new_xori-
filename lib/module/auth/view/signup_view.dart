@@ -136,33 +136,33 @@ class SignupView extends GetView<AuthController> {
                         : controller.emailError.value,
                   )),
               const SizedBox(height: 12),
-              Obx(() => AppTextField(
-                    controller: TextEditingController(),
-                    hintText: 'Password',
-                    isPassword: true,
-                    isPasswordVisible: controller.isSignUpPasswordVisible.value,
-                    onTogglePassword: controller.toggleSignUpPasswordVisibility,
-                    onChanged: (value) =>
-                        controller.updateSignUpPassword(value),
-                    errorText: controller.passwordError.value.isEmpty
-                        ? null
-                        : controller.passwordError.value,
-                  )),
+        Obx(() => AppTextField(
+          controller: controller.signUpPasswordController ?? TextEditingController(),
+          hintText: 'Password',
+          isPassword: true,
+          isPasswordVisible: controller.isSignUpPasswordVisible.value,
+          onTogglePassword: controller.toggleSignUpPasswordVisibility,
+          onChanged: (value) =>
+            controller.updateSignUpPassword(value),
+          errorText: controller.passwordError.value.isEmpty
+            ? null
+            : controller.passwordError.value,
+          )),
               const SizedBox(height: 12),
-              Obx(() => AppTextField(
-                    controller: TextEditingController(),
-                    hintText: 'Confirm password',
-                    isPassword: true,
-                    isPasswordVisible:
-                        controller.isSignUpConfirmPasswordVisible.value,
-                    onTogglePassword:
-                        controller.toggleSignUpConfirmPasswordVisibility,
-                    onChanged: (value) =>
-                        controller.updateSignUpConfirmPassword(value),
-                    errorText: controller.confirmPasswordError.value.isEmpty
-                        ? null
-                        : controller.confirmPasswordError.value,
-                  )),
+        Obx(() => AppTextField(
+          controller: controller.signUpConfirmPasswordController ?? TextEditingController(),
+          hintText: 'Confirm password',
+          isPassword: true,
+          isPasswordVisible:
+            controller.isSignUpConfirmPasswordVisible.value,
+          onTogglePassword:
+            controller.toggleSignUpConfirmPasswordVisibility,
+          onChanged: (value) =>
+            controller.updateSignUpConfirmPassword(value),
+          errorText: controller.confirmPasswordError.value.isEmpty
+            ? null
+            : controller.confirmPasswordError.value,
+          )),
               const SizedBox(height: 16),
               // Personality Traits Selection UI
               Padding(
