@@ -7,6 +7,8 @@ import '../module/xori_userprofile/view/xori_userprofile_screen.dart';
 import '../module/xori_userprofile/binding/xori_userprofile_binding.dart';
 import 'package:get/get.dart';
 import 'package:xori/module/chat/view/chat_screen.dart';
+import 'package:xori/module/chat/binding/chat_binding.dart';
+import 'package:xori/module/chat_list/binding/chat_list_binding.dart';
 import 'package:xori/module/home/binding/home_binding.dart';
 import 'package:xori/module/navbar_wrapper/binding/navwrapper_binding.dart';
 import 'package:xori/module/navbar_wrapper/view/navwrapper_screen.dart';
@@ -44,9 +46,17 @@ class AppPages {
       page: () => const NavbarWrapper(),
       binding: NavbarWrapperBinding(),
     ),
-    GetPage(name: AppRoutes.chatList, page: () => ChatListScreen()),
+    GetPage(
+      name: AppRoutes.chatList, 
+      page: () => ChatListScreen(),
+      binding: ChatListBinding(),
+    ),
     GetPage(name: AppRoutes.addStory, page: () => AddStoryScreen()),
-    GetPage(name: AppRoutes.chat, page: () => ChatScreen()),
+    GetPage(
+      name: AppRoutes.chat, 
+      page: () => ChatScreen(),
+      binding: ChatBinding(),
+    ),
     GetPage(
       name: AppRoutes.xoriUserProfile,
       page: () => const XoriUserProfileScreen(),

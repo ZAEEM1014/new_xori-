@@ -9,7 +9,9 @@ import '../controller/xori_userprofile_controller.dart';
 
 import '../../../models/post_model.dart';
 import '../../../models/follow_user_model.dart';
+import '../../../models/user_model.dart';
 import '../../../services/follow_service.dart';
+import '../../../routes/app_routes.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class _FollowButton extends StatelessWidget {
@@ -185,16 +187,19 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Container(
-                        height: 44,
-                        width: 50,
-                        decoration: BoxDecoration(
-                          color: AppColors.inputBackground,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.email_outlined,
-                          color: AppColors.textDark,
+                      GestureDetector(
+                        onTap: () => _openChatWithUser(controller.user.value),
+                        child: Container(
+                          height: 44,
+                          width: 50,
+                          decoration: BoxDecoration(
+                            color: AppColors.inputBackground,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.email_outlined,
+                            color: AppColors.textDark,
+                          ),
                         ),
                       ),
                     ],
@@ -440,6 +445,48 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Icon(Icons.error_outline, color: Colors.grey),
+      );
+    }
+  }
+
+  /// Open chat with the current user being viewed
+  void _openChatWithUser(UserModel user) {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        Get.snackbar(
+          'Error',
+          'You must be logged in to send messages',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      if (currentUser.uid == user.uid) {
+        Get.snackbar(
+          'Info',
+          'You cannot send messages to yourself',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
+
+      // Navigate to chat screen
+      Get.toNamed(
+        AppRoutes.chat,
+        arguments: {
+          'contactId': user.uid,
+          'name': user.username,
+          'avatar': user.profileImageUrl,
+          'isOnline': true,
+        },
+      );
+    } catch (e) {
+      print('[DEBUG] XoriUserProfileScreen: Error opening chat: $e');
+      Get.snackbar(
+        'Error',
+        'Failed to open chat. Please try again.',
+        snackPosition: SnackPosition.BOTTOM,
       );
     }
   }

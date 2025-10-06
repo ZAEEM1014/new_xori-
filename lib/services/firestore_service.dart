@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:xori/models/user_model.dart';
+import 'package:xori/models/contact_model.dart';
 
 class FirestoreService {
   // Stream posts for a given user uid, sorted by timestamp descending
@@ -157,6 +158,21 @@ class FirestoreService {
     } catch (e) {
       print('[DEBUG] FirestoreService: Error getting user posts: $e');
       throw Exception('Failed to get user posts: $e');
+    }
+  }
+
+  /// Add a contact to the user's chat_list subcollection
+  Future<void> addContactToChatList(String userId, ContactModel contact) async {
+    try {
+      await _firestore
+          .collection(_userCollection)
+          .doc(userId)
+          .collection('chat_list')
+          .doc(contact.id)
+          .set(contact.toMap());
+    } catch (e) {
+      print('[DEBUG] FirestoreService: Error adding contact to chat_list: $e');
+      throw Exception('Failed to add contact to chat_list: $e');
     }
   }
 }

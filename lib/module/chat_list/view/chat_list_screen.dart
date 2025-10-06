@@ -38,11 +38,50 @@ class ChatListScreen extends StatelessWidget {
             // 💬 Chat list
             Expanded(
               child: Obx(() {
-                final chats = controller.filteredChats;
+                if (controller.isLoading.value) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                final contacts = controller.filteredContacts;
+                
+                if (contacts.isEmpty) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No chats yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Start a conversation with someone!',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
                 return ListView.builder(
-                  itemCount: chats.length,
+                  itemCount: contacts.length,
                   itemBuilder: (context, index) {
-                    final chat = chats[index];
+                    final contact = contacts[index];
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -50,18 +89,24 @@ class ChatListScreen extends StatelessWidget {
                       ),
                       leading: CircleAvatar(
                         radius: 24,
-                        backgroundColor: chat.isGroup
-                            ? Colors.purple.shade100
-                            : Colors.grey.shade200,
-                        backgroundImage: chat.avatar != null
-                            ? NetworkImage(chat.avatar!)
+                        backgroundColor: Colors.grey.shade200,
+                        backgroundImage: contact.profileImageUrl != null
+                            ? NetworkImage(contact.profileImageUrl!)
                             : null,
-                        child: chat.isGroup && chat.avatar == null
-                            ? const Icon(Icons.group, color: Colors.purple)
+                        child: contact.profileImageUrl == null
+                            ? Text(
+                                contact.name.isNotEmpty 
+                                    ? contact.name[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              )
                             : null,
                       ),
                       title: Text(
-                        chat.name,
+                        contact.name,
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
@@ -69,16 +114,17 @@ class ChatListScreen extends StatelessWidget {
                       ),
                       subtitle: Row(
                         children: [
-                          if (chat.isImage)
+                          if (contact.lastMessage == 'Image')
                             const Icon(
                               Icons.image,
                               size: 16,
                               color: Colors.grey,
                             ),
-                          if (chat.isImage) const SizedBox(width: 4),
+                          if (contact.lastMessage == 'Image') 
+                            const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              chat.message,
+                              contact.lastMessage ?? 'No messages yet',
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Colors.grey.shade600,
@@ -88,45 +134,20 @@ class ChatListScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      trailing: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            chat.time,
-                            style: TextStyle(
-                              color: Colors.grey.shade500,
-                              fontSize: 11,
-                            ),
-                          ),
-                          if (chat.hasUnread)
-                            Container(
-                              margin: const EdgeInsets.only(top: 4),
-                              height: 18,
-                              width: 18,
-                              decoration: const BoxDecoration(
-                                color: Colors.amber,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  '2',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+                      trailing: Text(
+                        controller.getTimeAgo(contact.lastMessageTime?.toDate()),
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 11,
+                        ),
                       ),
                       onTap: () => Get.toNamed(
                         AppRoutes.chat,
                         arguments: {
-                          'name': chat.name,
-                          'avatar': chat.avatar,
-                          'isOnline':
-                              true, // You can modify this based on your data model
+                          'contactId': contact.id,
+                          'name': contact.name,
+                          'avatar': contact.profileImageUrl,
+                          'isOnline': true,
                         },
                       ),
                     );
