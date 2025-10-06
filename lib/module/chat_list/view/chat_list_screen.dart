@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:xori/module/chat_list/controller/chat_list_controller.dart';
 import 'package:xori/routes/app_routes.dart';
-import 'package:xori/routes/app_routes.dart';
 
 class ChatListScreen extends StatelessWidget {
   ChatListScreen({super.key});
 
-  final ChatController controller = Get.put(ChatController());
+  final ChatListController controller = Get.put(ChatListController());
 
   @override
   Widget build(BuildContext context) {
@@ -39,13 +38,11 @@ class ChatListScreen extends StatelessWidget {
             Expanded(
               child: Obx(() {
                 if (controller.isLoading.value) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 final contacts = controller.filteredContacts;
-                
+
                 if (contacts.isEmpty) {
                   return const Center(
                     child: Column(
@@ -68,10 +65,7 @@ class ChatListScreen extends StatelessWidget {
                         SizedBox(height: 8),
                         Text(
                           'Start a conversation with someone!',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
                         ),
                       ],
                     ),
@@ -95,7 +89,7 @@ class ChatListScreen extends StatelessWidget {
                             : null,
                         child: contact.profileImageUrl == null
                             ? Text(
-                                contact.name.isNotEmpty 
+                                contact.name.isNotEmpty
                                     ? contact.name[0].toUpperCase()
                                     : '?',
                                 style: const TextStyle(
@@ -120,7 +114,7 @@ class ChatListScreen extends StatelessWidget {
                               size: 16,
                               color: Colors.grey,
                             ),
-                          if (contact.lastMessage == 'Image') 
+                          if (contact.lastMessage == 'Image')
                             const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -135,7 +129,9 @@ class ChatListScreen extends StatelessWidget {
                         ],
                       ),
                       trailing: Text(
-                        controller.getTimeAgo(contact.lastMessageTime?.toDate()),
+                        controller.getTimeAgo(
+                          contact.lastMessageTime?.toDate(),
+                        ),
                         style: TextStyle(
                           color: Colors.grey.shade500,
                           fontSize: 11,

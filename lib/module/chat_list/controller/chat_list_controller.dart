@@ -3,9 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../models/contact_model.dart';
 import '../../../services/message_service.dart';
 
-class ChatController extends GetxController {
+class ChatListController extends GetxController {
   final MessageService _messageService = MessageService();
-  
+
   var searchQuery = ''.obs;
   var isLoading = false.obs;
   var contacts = <ContactModel>[].obs;
@@ -22,25 +22,31 @@ class ChatController extends GetxController {
       if (currentUser == null) return;
 
       isLoading.value = true;
-      
+
       // Listen to real-time chat list updates
-      _messageService.getChatListStream(currentUser.uid).listen(
-        (contactList) {
-          try {
-            contacts.value = contactList;
-            isLoading.value = false;
-          } catch (e) {
-            print('[DEBUG] ChatController: Error updating contacts: $e');
-            isLoading.value = false;
-          }
-        },
-        onError: (error) {
-          print('[DEBUG] ChatController: Error in chat list stream: $error');
-          isLoading.value = false;
-        },
-      );
+      _messageService
+          .getChatListStream(currentUser.uid)
+          .listen(
+            (contactList) {
+              try {
+                contacts.value = contactList;
+                isLoading.value = false;
+              } catch (e) {
+                print(
+                  '[DEBUG] ChatListController: Error updating contacts: $e',
+                );
+                isLoading.value = false;
+              }
+            },
+            onError: (error) {
+              print(
+                '[DEBUG] ChatListController: Error in chat list stream: $error',
+              );
+              isLoading.value = false;
+            },
+          );
     } catch (e) {
-      print('[DEBUG] ChatController: Error loading chat list: $e');
+      print('[DEBUG] ChatListController: Error loading chat list: $e');
       isLoading.value = false;
     }
   }
@@ -49,11 +55,14 @@ class ChatController extends GetxController {
     try {
       if (searchQuery.isEmpty) return contacts;
       return contacts
-          .where((contact) => 
-              contact.name.toLowerCase().contains(searchQuery.value.toLowerCase()))
+          .where(
+            (contact) => contact.name.toLowerCase().contains(
+              searchQuery.value.toLowerCase(),
+            ),
+          )
           .toList();
     } catch (e) {
-      print('[DEBUG] ChatController: Error filtering contacts: $e');
+      print('[DEBUG] ChatListController: Error filtering contacts: $e');
       return [];
     }
   }
@@ -61,7 +70,7 @@ class ChatController extends GetxController {
   String getTimeAgo(DateTime? dateTime) {
     try {
       if (dateTime == null) return '';
-      
+
       final now = DateTime.now();
       final difference = now.difference(dateTime);
 
@@ -77,7 +86,7 @@ class ChatController extends GetxController {
         return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
       }
     } catch (e) {
-      print('[DEBUG] ChatController: Error formatting time: $e');
+      print('[DEBUG] ChatListController: Error formatting time: $e');
       return '';
     }
   }

@@ -29,10 +29,10 @@ class MessageService {
 
       // Add message to messages collection
       await _firestore.collection('messages').add(message.toMap());
-      
+
       // Update both users' chat lists
       await _updateChatLists(senderId, receiverId, content, message.timestamp);
-      
+
       print('[DEBUG] MessageService: Text message sent successfully');
     } catch (e) {
       print('[DEBUG] MessageService: Error sending text message: $e');
@@ -50,7 +50,7 @@ class MessageService {
     try {
       // Upload image to Cloudinary
       final imageUrl = await _cloudinaryService.uploadImage(imageFile);
-      
+
       final message = MessageModel(
         id: '',
         senderId: senderId,
@@ -64,10 +64,10 @@ class MessageService {
 
       // Add message to messages collection
       await _firestore.collection('messages').add(message.toMap());
-      
+
       // Update both users' chat lists
       await _updateChatLists(senderId, receiverId, 'Image', message.timestamp);
-      
+
       print('[DEBUG] MessageService: Image message sent successfully');
     } catch (e) {
       print('[DEBUG] MessageService: Error sending image message: $e');
@@ -76,7 +76,8 @@ class MessageService {
   }
 
   /// Get messages stream between two users
-  Stream<List<MessageModel>> getMessagesStream(String senderId, String receiverId) {
+  Stream<List<MessageModel>> getMessagesStream(
+      String senderId, String receiverId) {
     try {
       return _firestore
           .collection('messages')
@@ -85,13 +86,15 @@ class MessageService {
           .orderBy('timestamp', descending: false)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs
-            .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
-            .where((message) => 
-                (message.senderId == senderId && message.receiverId == receiverId) ||
-                (message.senderId == receiverId && message.receiverId == senderId))
-            .toList();
-      });
+            return snapshot.docs
+                .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
+                .where((message) =>
+                    (message.senderId == senderId &&
+                        message.receiverId == receiverId) ||
+                    (message.senderId == receiverId &&
+                        message.receiverId == senderId))
+                .toList();
+          });
     } catch (e) {
       print('[DEBUG] MessageService: Error getting messages stream: $e');
       return Stream.value([]);
@@ -113,7 +116,7 @@ class MessageService {
         batch.update(doc.reference, {'isRead': true});
       }
       await batch.commit();
-      
+
       print('[DEBUG] MessageService: Messages marked as read');
     } catch (e) {
       print('[DEBUG] MessageService: Error marking messages as read: $e');
@@ -121,7 +124,8 @@ class MessageService {
   }
 
   /// Update chat lists for both users
-  Future<void> _updateChatLists(String senderId, String receiverId, String lastMessage, Timestamp timestamp) async {
+  Future<void> _updateChatLists(String senderId, String receiverId,
+      String lastMessage, Timestamp timestamp) async {
     try {
       // Get user data for both users
       final senderData = await _firestoreService.getUser(senderId);
@@ -153,21 +157,21 @@ class MessageService {
 
       // Add sender to receiver's chat list
       await _firestoreService.addContactToChatList(receiverId, senderContact);
-      
+
       // Add receiver to sender's chat list
       await _firestoreService.addContactToChatList(senderId, receiverContact);
 
       // Update last message info in chat lists
       await _updateLastMessage(senderId, receiverId, lastMessage, timestamp);
       await _updateLastMessage(receiverId, senderId, lastMessage, timestamp);
-
     } catch (e) {
       print('[DEBUG] MessageService: Error updating chat lists: $e');
     }
   }
 
   /// Update last message in chat list
-  Future<void> _updateLastMessage(String userId, String contactId, String lastMessage, Timestamp timestamp) async {
+  Future<void> _updateLastMessage(String userId, String contactId,
+      String lastMessage, Timestamp timestamp) async {
     try {
       await _firestore
           .collection('users')

@@ -47,13 +47,13 @@ class AppPages {
       binding: NavbarWrapperBinding(),
     ),
     GetPage(
-      name: AppRoutes.chatList, 
+      name: AppRoutes.chatList,
       page: () => ChatListScreen(),
       binding: ChatListBinding(),
     ),
     GetPage(name: AppRoutes.addStory, page: () => AddStoryScreen()),
     GetPage(
-      name: AppRoutes.chat, 
+      name: AppRoutes.chat,
       page: () => ChatScreen(),
       binding: ChatBinding(),
     ),
