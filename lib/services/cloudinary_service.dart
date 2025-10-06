@@ -134,7 +134,11 @@ class CloudinaryService extends GetxService {
 
       if (response.isSuccessful) {
         print('Video uploaded successfully to Cloudinary');
-        return response.secureUrl;
+        // Generate a Flutter-compatible MP4 URL with H.264/AAC transformation
+        final compatibleUrl = _generateFlutterCompatibleVideoUrl(
+            response.secureUrl!, response.publicId!);
+        print('Generated Flutter-compatible video URL: $compatibleUrl');
+        return compatibleUrl;
       }
 
       print('Cloudinary upload failed: ${response.error}');
@@ -144,6 +148,83 @@ class CloudinaryService extends GetxService {
       return null;
     } finally {
       isUploading.value = false;
+    }
+  }
+
+  /// Generates a Flutter video_player compatible URL from Cloudinary
+  /// Forces MP4 format with H.264 video codec and AAC audio codec
+  String _generateFlutterCompatibleVideoUrl(
+      String originalUrl, String publicId) {
+    try {
+      // Get cloud name from config
+      String cloudName = CloudinaryConfig.cloudName;
+
+      // Build the transformation URL for Flutter compatibility with conservative settings
+      // f_mp4: Force MP4 format
+      // vc_h264: Use H.264 video codec (baseline profile for maximum compatibility)
+      // ac_aac: Use AAC audio codec
+      // br_1500k: Limit bitrate to 1.5Mbps for better compatibility
+      // w_720,h_1280: Limit resolution to 720p for better performance
+      // q_auto:low: Use lower quality for better compatibility
+      final transformedUrl =
+          'https://res.cloudinary.com/$cloudName/video/upload/f_mp4,vc_h264,ac_aac,br_1500k,w_720,h_1280,c_limit,q_auto:low/$publicId.mp4';
+
+      return transformedUrl;
+    } catch (e) {
+      print('Error generating compatible URL, using original: $e');
+      // Fallback to original URL if transformation fails
+      return originalUrl;
+    }
+  }
+
+  /// Converts any existing Cloudinary video URL to Flutter-compatible format
+  /// This is useful for fixing URLs that were uploaded before this fix
+  static String makeVideoUrlFlutterCompatible(String cloudinaryUrl) {
+    try {
+      // Check if it's already a transformed URL or already ends with .mp4
+      if (cloudinaryUrl.contains('f_mp4') || cloudinaryUrl.endsWith('.mp4')) {
+        return cloudinaryUrl;
+      }
+
+      // Parse the URL to extract cloud name and public ID
+      final uri = Uri.parse(cloudinaryUrl);
+      if (!uri.host.contains('cloudinary.com')) {
+        return cloudinaryUrl; // Not a Cloudinary URL
+      }
+
+      // Extract cloud name and public ID from the URL path
+      final pathSegments = uri.pathSegments;
+      if (pathSegments.length < 4) {
+        return cloudinaryUrl; // Invalid Cloudinary URL structure
+      }
+
+      final cloudName = pathSegments[0]; // Usually the cloud name
+      final publicIdWithVersion =
+          pathSegments.skip(3).join('/'); // Skip 'video', 'upload', version
+
+      // Remove version prefix if present (v1234567/)
+      String publicId = publicIdWithVersion;
+      if (publicId.startsWith('v') && publicId.contains('/')) {
+        final parts = publicId.split('/');
+        if (parts.length > 1 && RegExp(r'^v\d+$').hasMatch(parts[0])) {
+          publicId = parts.skip(1).join('/');
+        }
+      }
+
+      // Remove file extension if present
+      if (publicId.contains('.')) {
+        publicId = publicId.substring(0, publicId.lastIndexOf('.'));
+      }
+
+      // Build Flutter-compatible URL with conservative settings for maximum compatibility
+      final compatibleUrl =
+          'https://res.cloudinary.com/$cloudName/video/upload/f_mp4,vc_h264,ac_aac,br_1500k,w_720,h_1280,c_limit,q_auto:low/$publicId.mp4';
+
+      print('Converted video URL: $cloudinaryUrl -> $compatibleUrl');
+      return compatibleUrl;
+    } catch (e) {
+      print('Error converting video URL, using original: $e');
+      return cloudinaryUrl;
     }
   }
 }

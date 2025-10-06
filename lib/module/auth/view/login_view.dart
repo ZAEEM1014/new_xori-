@@ -42,17 +42,18 @@ class LoginView extends GetView<AuthController> {
                         : controller.loginEmailError.value,
                   )),
               const SizedBox(height: 12),
-      Obx(() => AppTextField(
-        controller: controller.loginPasswordController ?? TextEditingController(),
-        hintText: 'Enter your password',
-        isPassword: true,
-        isPasswordVisible: controller.isLoginPasswordVisible.value,
-        onTogglePassword: controller.toggleLoginPasswordVisibility,
-        onChanged: (value) => controller.updateLoginPassword(value),
-        errorText: controller.loginPasswordError.value.isEmpty
-        ? null
-        : controller.loginPasswordError.value,
-      )),
+              Obx(() => AppTextField(
+                    controller: controller.loginPasswordController ??
+                        TextEditingController(),
+                    hintText: 'Enter your password',
+                    isPassword: true,
+                    isPasswordVisible: controller.isLoginPasswordVisible.value,
+                    onTogglePassword: controller.toggleLoginPasswordVisibility,
+                    onChanged: (value) => controller.updateLoginPassword(value),
+                    errorText: controller.loginPasswordError.value.isEmpty
+                        ? null
+                        : controller.loginPasswordError.value,
+                  )),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(

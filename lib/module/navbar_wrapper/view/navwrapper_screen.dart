@@ -18,7 +18,6 @@ class NavbarWrapper extends GetView<NavbarWrapperController> {
       SearchScreen(),
       AddPostScreen(),
       ReelsScreen(),
-
       ProfileScreen(),
     ];
 

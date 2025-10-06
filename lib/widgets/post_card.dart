@@ -40,46 +40,83 @@ class _PostCardState extends State<PostCard> {
     await Future.delayed(const Duration(milliseconds: 80));
     setState(() => _shareIconScale = 1.0);
 
-    // Generate a shareable link (for demo, just use postId)
     final link = 'https://xori.app/post/$postId';
 
-    // Show a dialog with the link and copy/share options
-    final result = await showDialog<String>(
+    final result = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Share Post'),
-        content: SelectableText(link),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await Future.delayed(const Duration(milliseconds: 100));
-              Navigator.of(context).pop('copy');
-            },
-            child: const Text('Copy Link'),
-          ),
-          TextButton(
-            onPressed: () async {
-              // Use share_plus
-              try {
-                // ignore: use_build_context_synchronously
-                await Share.share(link);
-              } catch (_) {}
-              Navigator.of(context).pop('share');
-            },
-            child: const Text('Share...'),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
+      builder: (context) {
+        return Padding(
+          padding: MediaQuery.of(context).viewInsets,
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SelectableText(
+                          link,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 15),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, color: Colors.black),
+                        onPressed: () async {
+                          await Clipboard.setData(ClipboardData(text: link));
+                          Navigator.of(context).pop('copy');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.share, color: Colors.white),
+                      label: const Text('Share',
+                          style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: () async {
+                        try {
+                          await Share.share(link);
+                        } catch (_) {}
+                        Navigator.of(context).pop('share');
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        );
+      },
     );
 
     if (result == 'copy') {
-      await Clipboard.setData(ClipboardData(text: link));
+      // Already copied in the bottom sheet, just show snackbar
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Link copied to clipboard!')),
       );
     }
     if (result == 'copy' || result == 'share') {
-      // Only increment if user actually copied/shared
       if (currentUserId != null) {
         await PostService().addShare(postId, currentUserId!);
       }

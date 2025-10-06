@@ -6,7 +6,9 @@ import '../services/saved_service.dart';
 class SavedButton extends StatefulWidget {
   final String postId;
   final double size;
-  const SavedButton({Key? key, required this.postId, this.size = 28})
+  final Color? initialColor; // Add this for custom color
+  const SavedButton(
+      {Key? key, required this.postId, this.size = 28, this.initialColor})
       : super(key: key);
 
   @override
@@ -93,7 +95,7 @@ class _SavedButtonState extends State<SavedButton>
                     )
                   : Icon(
                       Icons.bookmark_border,
-                      color: AppColors.textDark,
+                      color: widget.initialColor ?? AppColors.textDark,
                       size: widget.size,
                     ),
             ),

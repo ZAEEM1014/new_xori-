@@ -9,6 +9,7 @@ class AppLikeButton extends StatelessWidget {
   final double size;
   final Color? likeCountColor;
   final Color? borderColor;
+  final bool showCount;
 
   const AppLikeButton({
     Key? key,
@@ -18,6 +19,7 @@ class AppLikeButton extends StatelessWidget {
     this.size = 32.0,
     this.likeCountColor,
     this.borderColor,
+    this.showCount = true,
   }) : super(key: key);
 
   @override
@@ -25,7 +27,7 @@ class AppLikeButton extends StatelessWidget {
     return LikeButton(
       size: size,
       isLiked: isLiked,
-      likeCount: likeCount,
+      likeCount: showCount ? likeCount : null,
       circleColor: const CircleColor(
         start: Color(0xFFFFEF12),
         end: Color(0xFFFFEF12),
@@ -56,6 +58,7 @@ class AppLikeButton extends StatelessWidget {
       },
       likeCountPadding: const EdgeInsets.only(left: 6),
       countBuilder: (int? count, bool liked, String text) {
+        if (!showCount) return const SizedBox.shrink();
         return Text(
           text,
           style: TextStyle(
