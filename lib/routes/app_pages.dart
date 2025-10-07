@@ -2,6 +2,13 @@ import '../module/storyview/view/story_screen.dart';
 import '../module/storyview/binding/story_binding.dart';
 import 'package:xori/module/settings/binding/settings_binding.dart';
 import 'package:xori/module/settings/view/settings_screen.dart';
+import 'package:xori/module/settings/view/privacy_policy_screen.dart';
+import 'package:xori/module/settings/view/terms_and_conditions_screen.dart';
+import 'package:xori/module/settings/view/help_and_support_screen.dart';
+import 'package:xori/module/settings/view/edit_profile_screen.dart';
+import 'package:xori/module/settings/view/session_control_screen.dart';
+import 'package:xori/module/settings/binding/edit_profile_binding.dart';
+import 'package:xori/module/settings/binding/session_control_binding.dart';
 
 import '../module/xori_userprofile/view/xori_userprofile_screen.dart';
 import '../module/xori_userprofile/binding/xori_userprofile_binding.dart';
@@ -76,6 +83,28 @@ class AppPages {
       name: AppRoutes.changePassword,
       page: () => const ChangePasswordView(),
       binding: ChangePasswordBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.privacyPolicy,
+      page: () => const PrivacyPolicyScreen(),
+    ),
+    GetPage(
+      name: AppRoutes.termsAndConditions,
+      page: () => const TermsAndConditionsScreen(),
+    ),
+    GetPage(
+      name: AppRoutes.helpAndSupport,
+      page: () => const HelpAndSupportScreen(),
+    ),
+    GetPage(
+      name: AppRoutes.editProfile,
+      page: () => const EditProfileScreen(),
+      binding: EditProfileBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.sessionControl,
+      page: () => const SessionControlScreen(),
+      binding: SessionControlBinding(),
     ),
   ];
 }

@@ -4,6 +4,7 @@ import '../../profile/controller/profile_controller.dart';
 import '../../../widgets/custom_app_bar.dart';
 import '../../../constants/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../routes/app_routes.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -72,7 +73,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 subtitle: const Text('Edit profile, picture, bio'),
                 trailing: _arrowIcon(),
-                onTap: () {},
+                onTap: () => Get.toNamed(AppRoutes.editProfile),
               )),
           const Divider(height: 1, color: AppColors.divider),
           ListTile(
@@ -105,7 +106,7 @@ class SettingsScreen extends StatelessWidget {
               leading: Icon(Icons.computer, color: AppColors.textLight),
               title: const Text('Session Control'),
               trailing: _arrowIcon(),
-              onTap: () {},
+              onTap: () => Get.toNamed(AppRoutes.sessionControl),
             ),
           ],
         ),
@@ -134,7 +135,7 @@ class SettingsScreen extends StatelessWidget {
                   Icon(Icons.privacy_tip_outlined, color: AppColors.textLight),
               title: const Text('Privacy Policy'),
               trailing: _arrowIcon(),
-              onTap: () {},
+              onTap: () => Get.toNamed(AppRoutes.privacyPolicy),
             ),
             const Divider(height: 1, color: AppColors.divider),
             ListTile(
@@ -142,14 +143,14 @@ class SettingsScreen extends StatelessWidget {
                   Icon(Icons.description_outlined, color: AppColors.textLight),
               title: const Text('Terms & Conditions'),
               trailing: _arrowIcon(),
-              onTap: () {},
+              onTap: () => Get.toNamed(AppRoutes.termsAndConditions),
             ),
             const Divider(height: 1, color: AppColors.divider),
             ListTile(
               leading: Icon(Icons.help_outline, color: AppColors.textLight),
               title: const Text('Help & Support'),
               trailing: _arrowIcon(),
-              onTap: () {},
+              onTap: () => Get.toNamed(AppRoutes.helpAndSupport),
             ),
           ],
         ),

@@ -13,6 +13,7 @@ class UserModel {
   final String? profileImageUrl;
   final DateTime createdAt;
   final String bio;
+  final List<String> personalityTraits;
 
   UserModel({
     required this.uid,
@@ -21,6 +22,7 @@ class UserModel {
     this.profileImageUrl,
     required this.createdAt,
     required this.bio,
+    this.personalityTraits = const [],
   });
 
   // Empty user model
@@ -31,6 +33,7 @@ class UserModel {
     profileImageUrl: null,
     createdAt: DateTime.now(),
     bio: '',
+    personalityTraits: [],
   );
 
   // Convert model to JSON
@@ -42,6 +45,7 @@ class UserModel {
       'profileImageUrl': profileImageUrl,
       'createdAt': createdAt.toIso8601String(),
       'bio': bio,
+      'personalityTraits': personalityTraits,
     };
   }
 
@@ -56,6 +60,7 @@ class UserModel {
           ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
       bio: json['bio'] ?? '',
+      personalityTraits: List<String>.from(json['personalityTraits'] ?? []),
     );
   }
 
@@ -67,6 +72,7 @@ class UserModel {
     String? profileImageUrl,
     DateTime? createdAt,
     String? bio,
+    List<String>? personalityTraits,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -75,6 +81,7 @@ class UserModel {
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       createdAt: createdAt ?? this.createdAt,
       bio: bio ?? this.bio,
+      personalityTraits: personalityTraits ?? this.personalityTraits,
     );
   }
 }

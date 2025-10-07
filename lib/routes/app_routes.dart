@@ -11,4 +11,9 @@ class AppRoutes {
   static const String chat = '/chat';
   static const String addPost = '/addPost';
   static const String changePassword = '/changePassword';
+  static const String privacyPolicy = '/privacyPolicy';
+  static const String termsAndConditions = '/termsAndConditions';
+  static const String helpAndSupport = '/helpAndSupport';
+  static const String editProfile = '/editProfile';
+  static const String sessionControl = '/sessionControl';
 }
