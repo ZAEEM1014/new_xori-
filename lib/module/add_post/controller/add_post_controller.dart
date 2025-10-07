@@ -23,6 +23,10 @@ class AddPostController extends GetxController {
   final captionController = TextEditingController();
   final hashtagsController = TextEditingController();
 
+  // Hashtag management
+  final RxList<String> parsedHashtags = <String>[].obs;
+  final RxList<String> suggestedHashtags = <String>[].obs;
+
   // Services
   final CloudinaryService _cloudinaryService = Get.find<CloudinaryService>();
   final PostService _postService = PostService();
@@ -34,10 +38,107 @@ class AddPostController extends GetxController {
   final ImagePicker _picker = ImagePicker();
 
   @override
+  void onInit() {
+    super.onInit();
+    // Listen to hashtag input changes
+    hashtagsController.addListener(_onHashtagChanged);
+    _loadTrendingHashtags();
+  }
+
+  @override
   void onClose() {
     captionController.dispose();
     hashtagsController.dispose();
     super.onClose();
+  }
+
+  void _onHashtagChanged() {
+    final text = hashtagsController.text;
+    parsedHashtags.value = _parseHashtags(text);
+
+    // Get hashtag suggestions based on input
+    if (text.isNotEmpty) {
+      _getHashtagSuggestions(text);
+    } else {
+      suggestedHashtags.clear();
+    }
+  }
+
+  Future<void> _loadTrendingHashtags() async {
+    try {
+      // Get trending hashtags from posts
+      final postsSnapshot = await FirebaseFirestore.instance
+          .collection('posts')
+          .where('isDeleted', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
+          .limit(100)
+          .get();
+
+      final hashtagCount = <String, int>{};
+
+      for (final doc in postsSnapshot.docs) {
+        try {
+          final data = doc.data();
+          final hashtags = (data['hashtags'] as List?)?.cast<String>() ?? [];
+
+          for (final hashtag in hashtags) {
+            hashtagCount[hashtag] = (hashtagCount[hashtag] ?? 0) + 1;
+          }
+        } catch (e) {
+          print('Error processing hashtag from post: $e');
+        }
+      }
+
+      // Sort hashtags by count and get trending ones
+      final sortedHashtags = hashtagCount.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+
+      suggestedHashtags.value =
+          sortedHashtags.take(10).map((entry) => entry.key).toList();
+    } catch (e) {
+      print('Error loading trending hashtags: $e');
+    }
+  }
+
+  Future<void> _getHashtagSuggestions(String input) async {
+    try {
+      final lastWord = input.split(' ').last.toLowerCase();
+      if (!lastWord.startsWith('#')) return;
+
+      final searchTerm = lastWord.substring(1); // Remove #
+      if (searchTerm.isEmpty) return;
+
+      // Search for similar hashtags in existing posts
+      final postsSnapshot = await FirebaseFirestore.instance
+          .collection('posts')
+          .where('isDeleted', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
+          .limit(50)
+          .get();
+
+      final matchingHashtags = <String>{};
+
+      for (final doc in postsSnapshot.docs) {
+        try {
+          final data = doc.data();
+          final hashtags = (data['hashtags'] as List?)?.cast<String>() ?? [];
+
+          for (final hashtag in hashtags) {
+            if (hashtag.toLowerCase().contains(searchTerm)) {
+              matchingHashtags.add(hashtag);
+              if (matchingHashtags.length >= 5) break;
+            }
+          }
+          if (matchingHashtags.length >= 5) break;
+        } catch (e) {
+          print('Error processing hashtag suggestion: $e');
+        }
+      }
+
+      suggestedHashtags.value = matchingHashtags.toList();
+    } catch (e) {
+      print('Error getting hashtag suggestions: $e');
+    }
   }
 
   // Switch between Post and Reel tabs
@@ -310,11 +411,45 @@ class AddPostController extends GetxController {
   List<String> _parseHashtags(String hashtagText) {
     if (hashtagText.isEmpty) return [];
 
-    return hashtagText
-        .split(' ')
-        .where((tag) => tag.isNotEmpty)
-        .map((tag) => tag.startsWith('#') ? tag : '#$tag')
-        .toList();
+    // Extract hashtags from text
+    final words = hashtagText.split(RegExp(r'\s+'));
+    final hashtags = <String>[];
+
+    for (final word in words) {
+      final trimmed = word.trim();
+      if (trimmed.isEmpty) continue;
+
+      if (trimmed.startsWith('#')) {
+        // Already has #, validate and clean
+        final cleanTag = trimmed.replaceAll(RegExp(r'[^\w#]'), '');
+        if (cleanTag.length > 1) hashtags.add(cleanTag.toLowerCase());
+      } else {
+        // Add # prefix and clean
+        final cleanTag = '#${trimmed.replaceAll(RegExp(r'[^\w]'), '')}';
+        if (cleanTag.length > 1) hashtags.add(cleanTag.toLowerCase());
+      }
+    }
+
+    return hashtags.toSet().toList(); // Remove duplicates
+  }
+
+  // Add hashtag to input
+  void addHashtag(String hashtag) {
+    final currentText = hashtagsController.text;
+    final hashtags = currentText.isEmpty ? [] : currentText.split(' ');
+
+    if (!hashtags.contains(hashtag)) {
+      hashtags.add(hashtag);
+      hashtagsController.text = hashtags.join(' ');
+    }
+  }
+
+  // Remove hashtag from input
+  void removeHashtag(String hashtag) {
+    final currentText = hashtagsController.text;
+    final hashtags = currentText.split(' ');
+    hashtags.remove(hashtag);
+    hashtagsController.text = hashtags.where((tag) => tag.isNotEmpty).join(' ');
   }
 
   // Clear form data
@@ -322,6 +457,8 @@ class AddPostController extends GetxController {
     selectedImage.value = null;
     captionController.clear();
     hashtagsController.clear();
+    parsedHashtags.clear();
+    suggestedHashtags.clear();
     taggedUsers.clear(); // Clear tagged users
     selectedTab.value = 0;
   }

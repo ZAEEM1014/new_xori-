@@ -432,6 +432,104 @@ class AddPostScreen extends GetView<AddPostController> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        // Parsed hashtags display
+                        Obx(() => controller.parsedHashtags.isNotEmpty
+                            ? Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.divider),
+                                ),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  children:
+                                      controller.parsedHashtags.map((hashtag) {
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        gradient: AppColors.appGradient,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            hashtag,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          GestureDetector(
+                                            onTap: () => controller
+                                                .removeHashtag(hashtag),
+                                            child: const Icon(
+                                              Icons.close,
+                                              color: Colors.white,
+                                              size: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              )
+                            : const SizedBox.shrink()),
+                        // Hashtag suggestions
+                        Obx(() => controller.suggestedHashtags.isNotEmpty
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Suggested hashtags',
+                                    style: TextStyle(
+                                      color: AppColors.textLight,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: controller.suggestedHashtags
+                                        .map((hashtag) {
+                                      return GestureDetector(
+                                        onTap: () =>
+                                            controller.addHashtag(hashtag),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color: AppColors.divider),
+                                          ),
+                                          child: Text(
+                                            hashtag,
+                                            style: const TextStyle(
+                                              color: AppColors.textDark,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              )
+                            : const SizedBox.shrink()),
                         const SizedBox(height: 18),
                         // Tag people
                         Container(
