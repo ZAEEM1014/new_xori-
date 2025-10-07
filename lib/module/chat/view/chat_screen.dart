@@ -129,12 +129,14 @@ class ChatScreen extends GetView<ChatController> {
                   if (message.type == 'image') {
                     return isSent
                         ? _buildSentImageMessage(
+                            context,
                             message.content,
                             timeString,
                             imageUrl: message.mediaUrl,
                             isOptimistic: message.id.startsWith('temp_img_'),
                           )
                         : _buildReceivedImageMessage(
+                            context,
                             message.content,
                             timeString,
                             imageUrl: message.mediaUrl,
@@ -149,6 +151,57 @@ class ChatScreen extends GetView<ChatController> {
               );
             }),
           ),
+          // Image preview section
+          Obx(() => controller.selectedImage.value != null
+              ? Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(top: BorderSide(color: Color(0xFFEAEAEA))),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Image preview
+                      GestureDetector(
+                        onTap: () => _showFullScreenImage(
+                            context, controller.selectedImage.value!),
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(
+                              controller.selectedImage.value!,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Selected text
+                      const Expanded(
+                        child: Text(
+                          'Image selected',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      // Close button
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.grey),
+                        onPressed: () => controller.clearSelectedImage(),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink()),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
@@ -162,7 +215,7 @@ class ChatScreen extends GetView<ChatController> {
                       color: Colors.grey,
                       onPressed: controller.isSending.value
                           ? null
-                          : () => controller.sendImageMessage(),
+                          : () => controller.selectImage(),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -175,7 +228,9 @@ class ChatScreen extends GetView<ChatController> {
                         child: TextField(
                           controller: _messageController,
                           decoration: InputDecoration(
-                            hintText: 'Type a message...',
+                            hintText: controller.selectedImage.value != null
+                                ? 'Send with image...'
+                                : 'Type a message...',
                             hintStyle: TextStyle(color: Colors.grey.shade600),
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(
@@ -230,6 +285,16 @@ class ChatScreen extends GetView<ChatController> {
 
   void _sendMessage() {
     final message = _messageController.text.trim();
+
+    // If image is selected, send image with caption
+    if (controller.selectedImage.value != null) {
+      controller.sendImageMessage(caption: message);
+      _messageController.clear();
+      controller.stopTyping();
+      return;
+    }
+
+    // Otherwise send text message
     if (message.isNotEmpty) {
       controller.sendTextMessage(message);
       _messageController.clear();
@@ -348,7 +413,8 @@ class ChatScreen extends GetView<ChatController> {
     );
   }
 
-  Widget _buildSentImageMessage(String message, String time,
+  Widget _buildSentImageMessage(
+      BuildContext context, String message, String time,
       {String? imageUrl, bool isOptimistic = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -358,14 +424,10 @@ class ChatScreen extends GetView<ChatController> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Container(
-              constraints: BoxConstraints(maxWidth: Get.width * 0.6),
+              constraints: BoxConstraints(maxWidth: Get.width * 0.7),
               decoration: BoxDecoration(
-                color: AppColors.chatBubbleYellow,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
+                gradient: AppColors.appGradient,
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,68 +435,76 @@ class ChatScreen extends GetView<ChatController> {
                   if (imageUrl != null)
                     Stack(
                       children: [
-                        ClipRRect(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(16),
+                        GestureDetector(
+                          onTap: () =>
+                              _showFullScreenImageFromUrl(context, imageUrl),
+                          child: Container(
+                            margin: const EdgeInsets.all(8),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: isOptimistic &&
+                                      !imageUrl.startsWith('http')
+                                  ? Image.file(
+                                      File(imageUrl),
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      height: 200,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return Container(
+                                          height: 200,
+                                          color: Colors.grey[300],
+                                          child: const Icon(Icons.broken_image,
+                                              size: 50),
+                                        );
+                                      },
+                                    )
+                                  : Image.network(
+                                      imageUrl,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      height: 200,
+                                      loadingBuilder:
+                                          (context, child, loadingProgress) {
+                                        if (loadingProgress == null)
+                                          return child;
+                                        return Container(
+                                          height: 200,
+                                          color: Colors.grey[100],
+                                          child: Center(
+                                            child: CircularProgressIndicator(
+                                              value: loadingProgress
+                                                          .expectedTotalBytes !=
+                                                      null
+                                                  ? loadingProgress
+                                                          .cumulativeBytesLoaded /
+                                                      loadingProgress
+                                                          .expectedTotalBytes!
+                                                  : null,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return Container(
+                                          height: 200,
+                                          color: Colors.grey[300],
+                                          child: const Icon(Icons.broken_image,
+                                              size: 50),
+                                        );
+                                      },
+                                    ),
+                            ),
                           ),
-                          child: isOptimistic && !imageUrl.startsWith('http')
-                              ? Image.file(
-                                  File(imageUrl),
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: 200,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      height: 200,
-                                      color: Colors.grey[300],
-                                      child: const Icon(Icons.broken_image,
-                                          size: 50),
-                                    );
-                                  },
-                                )
-                              : Image.network(
-                                  imageUrl,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: 200,
-                                  loadingBuilder:
-                                      (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Container(
-                                      height: 200,
-                                      color: Colors.grey[100],
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          value: loadingProgress
-                                                      .expectedTotalBytes !=
-                                                  null
-                                              ? loadingProgress
-                                                      .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                              : null,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      height: 200,
-                                      color: Colors.grey[300],
-                                      child: const Icon(Icons.broken_image,
-                                          size: 50),
-                                    );
-                                  },
-                                ),
                         ),
                         if (isOptimistic)
                           Positioned.fill(
                             child: Container(
+                              margin: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: Colors.black.withOpacity(0.3),
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(16),
-                                ),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Center(
                                 child: CircularProgressIndicator(
@@ -450,14 +520,14 @@ class ChatScreen extends GetView<ChatController> {
                       message != 'Sending image...' &&
                       message != 'Image')
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                       child: Text(
                         message,
-                        style:
-                            const TextStyle(color: Colors.black, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                     ),
                 ],
@@ -476,7 +546,8 @@ class ChatScreen extends GetView<ChatController> {
     );
   }
 
-  Widget _buildReceivedImageMessage(String message, String time,
+  Widget _buildReceivedImageMessage(
+      BuildContext context, String message, String time,
       {String? imageUrl, bool isOptimistic = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -507,66 +578,69 @@ class ChatScreen extends GetView<ChatController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  constraints: BoxConstraints(maxWidth: Get.width * 0.6),
+                  constraints: BoxConstraints(maxWidth: Get.width * 0.7),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: const Color(0xFFEAEAEA)),
-                    borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(16),
-                      bottomLeft: Radius.circular(16),
-                      bottomRight: Radius.circular(16),
-                    ),
+                    border: Border.all(color: const Color(0xFFE0E0E0)),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (imageUrl != null)
-                        ClipRRect(
-                          borderRadius: const BorderRadius.only(
-                            topRight: Radius.circular(16),
-                          ),
-                          child: Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: 200,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Container(
+                        GestureDetector(
+                          onTap: () =>
+                              _showFullScreenImageFromUrl(context, imageUrl),
+                          child: Container(
+                            margin: const EdgeInsets.all(8),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
                                 height: 200,
-                                color: Colors.grey[100],
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes !=
-                                            null
-                                        ? loadingProgress
-                                                .cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
-                                  ),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 200,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.broken_image, size: 50),
-                              );
-                            },
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    height: 200,
+                                    color: Colors.grey[100],
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                loadingProgress
+                                                    .expectedTotalBytes!
+                                            : null,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    height: 200,
+                                    color: Colors.grey[300],
+                                    child: const Icon(Icons.broken_image,
+                                        size: 50),
+                                  );
+                                },
+                              ),
+                            ),
                           ),
                         ),
                       if (message.isNotEmpty && message != 'Image')
                         Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                           child: Text(
                             message,
                             style: const TextStyle(
                               color: Colors.black,
                               fontSize: 14,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ),
@@ -585,6 +659,152 @@ class ChatScreen extends GetView<ChatController> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showFullScreenImage(BuildContext context, File imageFile) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            children: [
+              // Gradient background
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: const BoxDecoration(
+                  gradient: AppColors.appGradient,
+                ),
+              ),
+              // Full screen image
+              Center(
+                child: InteractiveViewer(
+                  child: Image.file(
+                    imageFile,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              // Close button
+              Positioned(
+                top: 40,
+                right: 20,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showFullScreenImageFromUrl(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            children: [
+              // Gradient background
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: const BoxDecoration(
+                  gradient: AppColors.appGradient,
+                ),
+              ),
+              // Full screen image
+              Center(
+                child: InteractiveViewer(
+                  child: imageUrl.startsWith('http')
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes !=
+                                        null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                                color: Colors.white,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: Icon(
+                                Icons.broken_image,
+                                size: 100,
+                                color: Colors.white,
+                              ),
+                            );
+                          },
+                        )
+                      : Image.file(
+                          File(imageUrl),
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Center(
+                              child: Icon(
+                                Icons.broken_image,
+                                size: 100,
+                                color: Colors.white,
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ),
+              // Close button
+              Positioned(
+                top: 40,
+                right: 20,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

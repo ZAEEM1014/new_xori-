@@ -6,17 +6,35 @@ import 'package:xori/config/cloudinary_config.dart';
 class CloudinaryService extends GetxService {
   late final Cloudinary _cloudinary;
   final RxBool isUploading = false.obs;
+  bool _isInitialized = false;
+
+  CloudinaryService() {
+    _initializeCloudinary();
+  }
+
+  void _initializeCloudinary() {
+    try {
+      _cloudinary = Cloudinary.full(
+        apiKey: CloudinaryConfig.apiKey,
+        apiSecret: CloudinaryConfig.apiSecret,
+        cloudName: CloudinaryConfig.cloudName,
+      );
+      _isInitialized = true;
+      print('[DEBUG] Cloudinary service initialized successfully');
+      print('[DEBUG] Cloud name: ${CloudinaryConfig.cloudName}');
+      print('[DEBUG] API key: ${CloudinaryConfig.apiKey}');
+    } catch (e) {
+      print('[DEBUG] Failed to initialize Cloudinary: $e');
+      _isInitialized = false;
+    }
+  }
 
   @override
   void onInit() {
     super.onInit();
-    _cloudinary = Cloudinary.full(
-      apiKey: CloudinaryConfig.apiKey,
-      apiSecret: CloudinaryConfig.apiSecret,
-      cloudName: CloudinaryConfig.cloudName,
-    );
-    print(
-        'Cloudinary service initialized with cloud name: ${CloudinaryConfig.cloudName}');
+    if (!_isInitialized) {
+      _initializeCloudinary();
+    }
     _testConnection();
   }
 
@@ -81,11 +99,42 @@ class CloudinaryService extends GetxService {
 
   Future<String?> uploadImage(File imageFile, {String? folder}) async {
     try {
+      print('[DEBUG] CloudinaryService: Starting image upload...');
+      print('[DEBUG] Service initialized: $_isInitialized');
+      print('[DEBUG] Image file path: ${imageFile.path}');
+
+      if (!_isInitialized) {
+        print('[DEBUG] Cloudinary not initialized, trying to initialize...');
+        _initializeCloudinary();
+        if (!_isInitialized) {
+          throw Exception('Failed to initialize Cloudinary service');
+        }
+      }
+
+      final fileExists = await imageFile.exists();
+      final fileSize = await imageFile.length();
+
+      print('[DEBUG] Image file exists: $fileExists');
+      print('[DEBUG] Image file size: $fileSize bytes');
+      print('[DEBUG] Upload folder: ${folder ?? 'xori_posts'}');
+
+      if (!fileExists) {
+        throw Exception('Image file does not exist');
+      }
+
+      if (fileSize == 0) {
+        throw Exception('Image file is empty');
+      }
+
       isUploading.value = true;
 
       // Create a unique file name using timestamp
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'image_$timestamp';
+
+      print('[DEBUG] CloudinaryService: Uploading with filename: $fileName');
+      print(
+          '[DEBUG] CloudinaryService: Using cloud name: ${CloudinaryConfig.cloudName}');
 
       final response = await _cloudinary.uploadFile(
         filePath: imageFile.path,
@@ -94,19 +143,27 @@ class CloudinaryService extends GetxService {
         fileName: fileName,
         progressCallback: (count, total) {
           final progress = (count / total) * 100;
-          print('Upload progress: ${progress.toStringAsFixed(2)}%');
+          print('[DEBUG] Upload progress: ${progress.toStringAsFixed(2)}%');
         },
       );
 
-      if (response.isSuccessful) {
-        print('Image uploaded successfully to Cloudinary');
+      print('[DEBUG] CloudinaryService: Upload response received');
+      print('[DEBUG] Response successful: ${response.isSuccessful}');
+
+      if (response.isSuccessful && response.secureUrl != null) {
+        print('[DEBUG] Image uploaded successfully to Cloudinary');
+        print('[DEBUG] Secure URL: ${response.secureUrl}');
+        print('[DEBUG] Public ID: ${response.publicId}');
         return response.secureUrl;
       }
 
-      print('Cloudinary upload failed: ${response.error}');
+      print('[DEBUG] Cloudinary upload failed: ${response.error}');
+      print('[DEBUG] Response success flag: ${response.isSuccessful}');
+      print('[DEBUG] Response URL: ${response.secureUrl}');
       return null;
     } catch (e) {
-      print('Error uploading to Cloudinary: $e');
+      print('[DEBUG] Error uploading to Cloudinary: $e');
+      print('[DEBUG] Stack trace: ${StackTrace.current}');
       return null;
     } finally {
       isUploading.value = false;

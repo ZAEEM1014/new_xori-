@@ -17,6 +17,10 @@ class MessageService {
     required String content,
   }) async {
     try {
+      print('[DEBUG] MessageService: Sending text message...');
+      print('[DEBUG] Sender: $senderId, Receiver: $receiverId');
+      print('[DEBUG] Content: $content');
+
       final message = MessageModel(
         id: '',
         senderId: senderId,
@@ -27,8 +31,13 @@ class MessageService {
         isRead: false,
       );
 
+      print('[DEBUG] MessageService: Adding text message to Firestore...');
+      print('[DEBUG] Message data: ${message.toMap()}');
+
       // Add message to messages collection
-      await _firestore.collection('messages').add(message.toMap());
+      final docRef =
+          await _firestore.collection('messages').add(message.toMap());
+      print('[DEBUG] MessageService: Text message added with ID: ${docRef.id}');
 
       // Update both users' chat lists
       await _updateChatLists(senderId, receiverId, content, message.timestamp);
@@ -36,6 +45,7 @@ class MessageService {
       print('[DEBUG] MessageService: Text message sent successfully');
     } catch (e) {
       print('[DEBUG] MessageService: Error sending text message: $e');
+      print('[DEBUG] MessageService: Stack trace: ${StackTrace.current}');
       throw Exception('Failed to send message: $e');
     }
   }
@@ -48,27 +58,39 @@ class MessageService {
     String? caption,
   }) async {
     try {
+      print('[DEBUG] MessageService: Starting image upload...');
+      print('[DEBUG] Image file path: ${imageFile.path}');
+      print('[DEBUG] Image file exists: ${await imageFile.exists()}');
+
       // Upload image to Cloudinary in chat_images folder
       final imageUrl = await _cloudinaryService.uploadImage(imageFile,
           folder: 'xori_chat_images');
 
-      if (imageUrl == null) {
-        throw Exception('Failed to upload image to Cloudinary');
+      print('[DEBUG] MessageService: Image upload result: $imageUrl');
+
+      if (imageUrl == null || imageUrl.isEmpty) {
+        throw Exception(
+            'Failed to upload image to Cloudinary - got null/empty URL');
       }
 
       final message = MessageModel(
         id: '',
         senderId: senderId,
         receiverId: receiverId,
-        content: caption ?? '',
+        content: caption ?? 'Image',
         type: 'image',
         timestamp: Timestamp.now(),
         isRead: false,
         mediaUrl: imageUrl,
       );
 
+      print('[DEBUG] MessageService: Adding message to Firestore...');
+      print('[DEBUG] Message data: ${message.toMap()}');
+
       // Add message to messages collection
-      await _firestore.collection('messages').add(message.toMap());
+      final docRef =
+          await _firestore.collection('messages').add(message.toMap());
+      print('[DEBUG] MessageService: Message added with ID: ${docRef.id}');
 
       // Update both users' chat lists
       await _updateChatLists(
@@ -77,6 +99,7 @@ class MessageService {
       print('[DEBUG] MessageService: Image message sent successfully');
     } catch (e) {
       print('[DEBUG] MessageService: Error sending image message: $e');
+      print('[DEBUG] MessageService: Stack trace: ${StackTrace.current}');
       throw Exception('Failed to send image: $e');
     }
   }
@@ -85,22 +108,26 @@ class MessageService {
   Stream<List<MessageModel>> getMessagesStream(
       String senderId, String receiverId) {
     try {
+      // Create a composite query by fetching all messages and filtering client-side
+      // This is necessary because Firestore doesn't support complex OR queries easily
       return _firestore
           .collection('messages')
-          .where('senderId', whereIn: [senderId, receiverId])
-          .where('receiverId', whereIn: [senderId, receiverId])
           .orderBy('timestamp', descending: false)
           .snapshots()
           .map((snapshot) {
-            return snapshot.docs
-                .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
-                .where((message) =>
-                    (message.senderId == senderId &&
-                        message.receiverId == receiverId) ||
-                    (message.senderId == receiverId &&
-                        message.receiverId == senderId))
-                .toList();
-          });
+        final allMessages = snapshot.docs
+            .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
+            .toList();
+
+        // Filter messages between the two users
+        return allMessages
+            .where((message) =>
+                (message.senderId == senderId &&
+                    message.receiverId == receiverId) ||
+                (message.senderId == receiverId &&
+                    message.receiverId == senderId))
+            .toList();
+      });
     } catch (e) {
       print('[DEBUG] MessageService: Error getting messages stream: $e');
       return Stream.value([]);
