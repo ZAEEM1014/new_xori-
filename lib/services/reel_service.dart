@@ -124,9 +124,10 @@ class ReelService {
           .add(comment.toMap());
 
       // Update comment count in reel document
-      await _firestore.collection(_reelsCollection).doc(reelId).update({
-        'commentCount': FieldValue.increment(1)
-      });
+      await _firestore
+          .collection(_reelsCollection)
+          .doc(reelId)
+          .update({'commentCount': FieldValue.increment(1)});
     } catch (e) {
       throw Exception('Failed to add comment: ${e.toString()}');
     }
@@ -140,9 +141,8 @@ class ReelService {
         .collection('comments')
         .orderBy('createdAt', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ReelComment.fromDoc(doc))
-            .toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => ReelComment.fromDoc(doc)).toList());
   }
 
   // Get comment count for a reel
@@ -173,9 +173,10 @@ class ReelService {
       });
 
       // Update share count in reel document
-      await _firestore.collection(_reelsCollection).doc(reelId).update({
-        'shareCount': FieldValue.increment(1)
-      });
+      await _firestore
+          .collection(_reelsCollection)
+          .doc(reelId)
+          .update({'shareCount': FieldValue.increment(1)});
     } catch (e) {
       throw Exception('Failed to share reel: ${e.toString()}');
     }
@@ -245,9 +246,8 @@ class ReelService {
         .collection('savedReels')
         .orderBy('savedAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => SavedReel.fromDoc(doc))
-            .toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => SavedReel.fromDoc(doc)).toList());
   }
 
   // Get current user ID

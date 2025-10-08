@@ -63,7 +63,7 @@ class _ReelCommentBottomSheetState extends State<ReelCommentBottomSheet> {
       await _reelService.addComment(widget.reelId, comment);
       _commentController.clear();
       widget.onCommentAdded?.call();
-      
+
       // Optionally close the bottom sheet after adding comment
       // Get.back();
     } catch (e) {
@@ -95,7 +95,7 @@ class _ReelCommentBottomSheetState extends State<ReelCommentBottomSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Header
           Container(
             padding: const EdgeInsets.all(16),
@@ -125,9 +125,9 @@ class _ReelCommentBottomSheetState extends State<ReelCommentBottomSheet> {
               ],
             ),
           ),
-          
+
           const Divider(height: 1),
-          
+
           // Comments list
           Expanded(
             child: StreamBuilder<List<ReelComment>>(
@@ -136,9 +136,9 @@ class _ReelCommentBottomSheetState extends State<ReelCommentBottomSheet> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                
+
                 final comments = snapshot.data ?? [];
-                
+
                 if (comments.isEmpty) {
                   return const Center(
                     child: Text(
@@ -151,7 +151,7 @@ class _ReelCommentBottomSheetState extends State<ReelCommentBottomSheet> {
                     ),
                   );
                 }
-                
+
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: comments.length,
@@ -211,7 +211,7 @@ class _ReelCommentBottomSheetState extends State<ReelCommentBottomSheet> {
               },
             ),
           ),
-          
+
           // Comment input
           Container(
             padding: const EdgeInsets.all(16),
@@ -229,7 +229,8 @@ class _ReelCommentBottomSheetState extends State<ReelCommentBottomSheet> {
               children: [
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(20),
@@ -261,7 +262,8 @@ class _ReelCommentBottomSheetState extends State<ReelCommentBottomSheet> {
                             height: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
                         : const Icon(

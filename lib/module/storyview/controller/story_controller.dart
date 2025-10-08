@@ -12,7 +12,7 @@ class StoryController extends GetxController {
   final RxList<StoryModel> stories = <StoryModel>[].obs;
   final RxInt currentIndex = 0.obs;
   final RxBool isLoading = true.obs;
-  
+
   // Like and comment related observables
   final RxMap<String, bool> storyLikeStates = <String, bool>{}.obs;
   final RxMap<String, int> storyLikeCounts = <String, int>{}.obs;
@@ -40,7 +40,9 @@ class StoryController extends GetxController {
 
     for (final story in stories) {
       // Initialize like states
-      _storyService.isStoryLikedByUser(story.storyId, currentUserId).listen((isLiked) {
+      _storyService
+          .isStoryLikedByUser(story.storyId, currentUserId)
+          .listen((isLiked) {
         storyLikeStates[story.storyId] = isLiked;
       });
 

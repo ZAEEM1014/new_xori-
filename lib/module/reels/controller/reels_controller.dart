@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
@@ -21,6 +22,9 @@ class ReelController extends GetxController {
   var hasError = false.obs;
   var errorMessage = ''.obs;
 
+  // Memory management timer
+  Timer? _memoryCleanupTimer;
+
   // Video controllers and states for individual reels
   var videoControllers = <String, VideoPlayerController>{}.obs;
   var videoLoadingStates = <String, bool>{}.obs;
@@ -32,7 +36,7 @@ class ReelController extends GetxController {
   var reelCommentCounts = <String, int>{}.obs;
   var reelShareCounts = <String, int>{}.obs;
   var reelSaveStates = <String, bool>{}.obs;
-  
+
   // Video control states
   var isMuted = false.obs;
   var currentPlayingReelId = ''.obs;
@@ -42,6 +46,35 @@ class ReelController extends GetxController {
   void onInit() {
     super.onInit();
     loadReels();
+
+    // Start periodic memory cleanup every 30 seconds
+    _memoryCleanupTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _performMemoryCleanup();
+    });
+  }
+
+  /// Perform aggressive memory cleanup
+  void _performMemoryCleanup() {
+    // Only keep video controllers for current and adjacent reels
+    if (videoControllers.length > 2) {
+      final controllersToRemove = <String>[];
+
+      // Find controllers that should be disposed
+      for (final controllerId in videoControllers.keys) {
+        final controller = videoControllers[controllerId];
+        if (controller != null && !controller.value.isPlaying) {
+          controllersToRemove.add(controllerId);
+        }
+      }
+
+      // Dispose non-playing controllers
+      for (final id in controllersToRemove.take(videoControllers.length - 1)) {
+        disposeVideoController(id);
+      }
+    }
+
+    debugPrint(
+        'Memory cleanup performed. Active controllers: ${videoControllers.length}');
   }
 
   /// Load reels from Firestore with proper error handling
@@ -51,18 +84,25 @@ class ReelController extends GetxController {
       hasError.value = false;
       errorMessage.value = '';
 
+      debugPrint('Starting to load reels...');
       final fetchedReels = await _reelService.getAllReels();
+      debugPrint('Fetched ${fetchedReels.length} reels from Firestore');
+
       reels.value = fetchedReels;
 
-      // Initialize video states
+      // Initialize video states - set loading to false initially
       for (final reel in fetchedReels) {
-        videoLoadingStates[reel.id] = true;
+        videoLoadingStates[reel.id] = false; // Changed from true to false
         videoErrorStates[reel.id] = '';
+        debugPrint('Reel loaded: ${reel.id} - ${reel.videoUrl}');
       }
 
       // Initialize like, comment, share, and save states
       _initializeInteractionData();
+
+      debugPrint('Reels loading completed successfully');
     } catch (e) {
+      debugPrint('Error loading reels: $e');
       hasError.value = true;
       errorMessage.value = 'Failed to load reels: ${e.toString()}';
     } finally {
@@ -133,10 +173,37 @@ class ReelController extends GetxController {
 
       // If already initialized and working, don't reinitialize
       final existingController = videoControllers[reelId];
-      if (existingController != null && 
-          existingController.value.isInitialized && 
+      if (existingController != null &&
+          existingController.value.isInitialized &&
           !existingController.value.hasError) {
         return;
+      }
+
+      // Aggressive memory management: limit to maximum 2 video controllers
+      if (videoControllers.length >= 2) {
+        // Find controllers for reels that are not current or adjacent
+        final currentIndex = reels.indexWhere((reel) => reel.id == reelId);
+        final controllersToDispose = <String>[];
+
+        for (final controllerId in videoControllers.keys) {
+          final controllerIndex =
+              reels.indexWhere((reel) => reel.id == controllerId);
+          if (controllerIndex != -1 &&
+              (controllerIndex - currentIndex).abs() > 1) {
+            controllersToDispose.add(controllerId);
+          }
+        }
+
+        // Dispose far controllers first
+        for (final id in controllersToDispose) {
+          await disposeVideoController(id);
+        }
+
+        // If still too many, dispose oldest
+        if (videoControllers.length >= 2) {
+          final firstKey = videoControllers.keys.first;
+          await disposeVideoController(firstKey);
+        }
       }
 
       // Set loading state
@@ -257,30 +324,63 @@ class ReelController extends GetxController {
   /// Try to initialize a video controller with the given URL
   Future<VideoPlayerController> _tryInitializeController(
       String videoUrl) async {
+    debugPrint('Trying to initialize controller for URL: $videoUrl');
+
     final uri = Uri.parse(videoUrl);
     final controller = VideoPlayerController.networkUrl(
       uri,
       videoPlayerOptions: VideoPlayerOptions(
-        mixWithOthers: true,
+        mixWithOthers: false,
         allowBackgroundPlayback: false,
       ),
-    );
-
-    // Initialize with timeout
-    await controller.initialize().timeout(
-      const Duration(seconds: 15),
-      onTimeout: () {
-        throw Exception('Video initialization timeout');
+      httpHeaders: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Connection': 'close',
+        'Accept-Ranges': 'bytes',
       },
     );
 
-    // Set looping and volume
-    await controller.setLooping(true);
-    await controller.setVolume(isMuted.value ? 0.0 : 1.0);
+    try {
+      // Initialize with shorter timeout and limited buffer
+      await controller.initialize().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          debugPrint('Video initialization timeout for URL: $videoUrl');
+          throw Exception('Video initialization timeout after 8 seconds');
+        },
+      );
 
-    // Verify initialization
-    if (!controller.value.isInitialized || controller.value.hasError) {
-      throw Exception('Video failed to initialize properly');
+      debugPrint('Video initialized successfully for URL: $videoUrl');
+
+      // Set looping, volume and optimize settings
+      await controller.setLooping(true);
+      await controller.setVolume(isMuted.value ? 0.0 : 1.0);
+
+      // Try to reduce buffer size (platform-specific optimization)
+      try {
+        await controller.setPlaybackSpeed(1.0);
+      } catch (e) {
+        debugPrint('Could not set playback speed: $e');
+      }
+
+      // Verify initialization
+      if (!controller.value.isInitialized) {
+        throw Exception(
+            'Video failed to initialize - not marked as initialized');
+      }
+
+      if (controller.value.hasError) {
+        throw Exception(
+            'Video has error: ${controller.value.errorDescription}');
+      }
+
+      debugPrint('Video controller setup completed for URL: $videoUrl');
+    } catch (e) {
+      debugPrint('Error initializing video controller: $e');
+      await controller.dispose();
+      rethrow;
     }
 
     return controller;
@@ -316,10 +416,9 @@ class ReelController extends GetxController {
   Future<void> playVideo(String reelId) async {
     try {
       final controller = videoControllers[reelId];
-      if (controller != null && 
-          controller.value.isInitialized && 
+      if (controller != null &&
+          controller.value.isInitialized &&
           !controller.value.hasError) {
-        
         // Pause all other videos first (but not this one)
         for (final entry in videoControllers.entries) {
           if (entry.key != reelId && entry.value.value.isPlaying) {
@@ -327,20 +426,20 @@ class ReelController extends GetxController {
             videoPlayStates[entry.key] = false;
           }
         }
-        
+
         // Set volume based on mute state
         await controller.setVolume(isMuted.value ? 0.0 : 1.0);
-        
+
         // Seek to beginning if at end
         if (controller.value.position >= controller.value.duration) {
           await controller.seekTo(Duration.zero);
         }
-        
+
         // Play the video
         if (!controller.value.isPlaying) {
           await controller.play();
         }
-        
+
         // Update state
         currentPlayingReelId.value = reelId;
         videoPlayStates[reelId] = true;
@@ -356,7 +455,7 @@ class ReelController extends GetxController {
     if (controller != null && controller.value.isInitialized) {
       await controller.pause();
       videoPlayStates[reelId] = false;
-      
+
       if (currentPlayingReelId.value == reelId) {
         currentPlayingReelId.value = '';
       }
@@ -370,7 +469,7 @@ class ReelController extends GetxController {
 
   /// Check if video is loading for a specific reel
   bool isVideoLoading(String reelId) {
-    return videoLoadingStates[reelId] ?? true;
+    return videoLoadingStates[reelId] ?? false;
   }
 
   /// Check if video has error for a specific reel
@@ -435,7 +534,7 @@ class ReelController extends GetxController {
         videoLoadingStates.remove(reelId);
         videoErrorStates.remove(reelId);
         videoPlayStates.remove(reelId);
-        
+
         if (currentPlayingReelId.value == reelId) {
           currentPlayingReelId.value = '';
         }
@@ -479,8 +578,8 @@ class ReelController extends GetxController {
     try {
       // Check if already initialized and playing
       final existingController = videoControllers[reelId];
-      if (existingController != null && 
-          existingController.value.isInitialized && 
+      if (existingController != null &&
+          existingController.value.isInitialized &&
           !existingController.value.hasError) {
         // Just play if already initialized
         await playVideo(reelId);
@@ -489,10 +588,10 @@ class ReelController extends GetxController {
 
       // Initialize if not already done
       await initializeVideoPlayer(reelId, videoUrl);
-      
+
       // Small delay to ensure initialization is complete
       await Future.delayed(const Duration(milliseconds: 50));
-      
+
       // Play the video
       await playVideo(reelId);
     } catch (e) {
@@ -513,6 +612,9 @@ class ReelController extends GetxController {
 
   @override
   void onClose() {
+    // Cancel memory cleanup timer
+    _memoryCleanupTimer?.cancel();
+
     // Dispose all video controllers when controller is closed
     disposeAllVideoControllers();
     super.onClose();
@@ -677,11 +779,11 @@ class ReelController extends GetxController {
   bool isReelSaved(String reelId) {
     return reelSaveStates[reelId] ?? false;
   }
-  
+
   /// Toggle mute/unmute for all videos
   Future<void> toggleMute() async {
     isMuted.value = !isMuted.value;
-    
+
     // Update volume for all initialized video controllers
     for (final controller in videoControllers.values) {
       if (controller.value.isInitialized) {
@@ -689,12 +791,12 @@ class ReelController extends GetxController {
       }
     }
   }
-  
+
   /// Check if video is playing
   bool isVideoPlaying(String reelId) {
     return videoPlayStates[reelId] ?? false;
   }
-  
+
   /// Toggle play/pause for a specific reel
   Future<void> togglePlayPause(String reelId) async {
     final controller = videoControllers[reelId];

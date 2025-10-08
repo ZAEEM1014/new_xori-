@@ -20,6 +20,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   late final PageController _pageController;
   int _currentIndex = 0;
   bool _isAppInBackground = false;
+  bool _isPageChanging = false;
+  DateTime _lastPageChangeTime = DateTime.now();
+  bool _isAnimating = false;
+  int _lastProcessedIndex = 0;
 
   @override
   void initState() {
@@ -71,6 +75,15 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   Future<void> _loadReels() async {
     try {
       await _controller.loadReels();
+      
+      // Initialize the first video after reels are loaded
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _controller.reels.isNotEmpty) {
+          final firstReel = _controller.reels.first;
+          debugPrint('Auto-initializing first reel: ${firstReel.id}');
+          _controller.initializeAndPlayVideo(firstReel.id, firstReel.videoUrl);
+        }
+      });
     } catch (e) {
       debugPrint('Error loading reels: $e');
       _showErrorSnackbar('Failed to load reels');
@@ -120,55 +133,111 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
   void _onPageChanged(int index, List<Reel> reels) {
     try {
-      if (index >= 0 && index < reels.length && index != _currentIndex) {
-        debugPrint('Page changed from $_currentIndex to $index');
-        
-        // Pause previous video immediately
-        if (_currentIndex >= 0 && _currentIndex < reels.length) {
-          final prevReel = reels[_currentIndex];
-          _controller.pauseVideo(prevReel.id);
-        }
-
-        // Update current index immediately
-        final oldIndex = _currentIndex;
-        _currentIndex = index;
-
-        // Initialize and play current video immediately
-        final currentReel = reels[index];
-        _controller.initializeAndPlayVideo(currentReel.id, currentReel.videoUrl);
-
-        // Preload adjacent videos for smooth navigation
-        _preloadAdjacentVideos(index, reels);
-        
-        // Dispose distant videos to free memory
-        _disposeDistantVideos(index, reels, oldIndex);
+      final now = DateTime.now();
+      
+      // Ultra-aggressive flicking prevention system
+      if (_isPageChanging || _isAnimating ||
+          now.difference(_lastPageChangeTime).inMilliseconds < 800 ||
+          index == _lastProcessedIndex) {
+        debugPrint('Page change BLOCKED: changing=$_isPageChanging, animating=$_isAnimating, '
+                  'timeDiff=${now.difference(_lastPageChangeTime).inMilliseconds}ms, '
+                  'sameIndex=${index == _lastProcessedIndex}');
+        return;
       }
+
+      if (index < 0 || index >= reels.length) {
+        debugPrint('Invalid page index: $index');
+        return;
+      }
+
+      if (index == _currentIndex) {
+        debugPrint('Same page index BLOCKED: $index');
+        return;
+      }
+
+      // Set all blocking flags with aggressive timestamps
+      _isPageChanging = true;
+      _isAnimating = true;
+      _lastProcessedIndex = index;
+      _lastPageChangeTime = now;
+      
+      debugPrint('Page changed from $_currentIndex to $index');
+
+      // Immediately dispose distant videos first to free buffer memory
+      _disposeDistantVideosImmediate(index, reels);
+
+      // Pause previous video immediately
+      if (_currentIndex >= 0 && _currentIndex < reels.length) {
+        final prevReel = reels[_currentIndex];
+        _controller.pauseVideo(prevReel.id);
+      }
+
+      // Update current index immediately
+      final oldIndex = _currentIndex;
+      _currentIndex = index;
+
+      // Initialize and play current video with delay to ensure smooth transition
+      final currentReel = reels[index];
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted && _currentIndex == index && !_isPageChanging) {
+          _controller.initializeAndPlayVideo(
+              currentReel.id, currentReel.videoUrl);
+        }
+      });
+
+      // Preload only one adjacent video to reduce memory pressure
+      _preloadAdjacentVideos(index, reels);
+
+      // Dispose old videos after a short delay
+      Future.delayed(const Duration(milliseconds: 150), () {
+        _disposeDistantVideos(index, reels, oldIndex);
+      });
+      
+      // Ultra-aggressive reset timers to prevent any flicking
+      Future.delayed(const Duration(milliseconds: 1200), () {
+        _isPageChanging = false;
+      });
+      
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        _isAnimating = false;
+      });
     } catch (e) {
       debugPrint('Error handling page change: $e');
+      _isPageChanging = false;
+    }
+  }  void _preloadAdjacentVideos(int currentIndex, List<Reel> reels) {
+    // Only preload next video if we have available memory
+    if (currentIndex + 1 < reels.length && 
+        _controller.videoControllers.length < 2) {
+      final nextReel = reels[currentIndex + 1];
+      _controller.preloadVideo(nextReel.id, nextReel.videoUrl);
     }
   }
 
-  void _preloadAdjacentVideos(int currentIndex, List<Reel> reels) {
-    // Preload next 2 videos
-    for (int i = 1; i <= 2; i++) {
-      final nextIndex = currentIndex + i;
-      if (nextIndex < reels.length) {
-        final reel = reels[nextIndex];
-        _controller.preloadVideo(reel.id, reel.videoUrl);
+  void _disposeDistantVideosImmediate(int currentIndex, List<Reel> reels) {
+    // Immediately dispose all videos except current and next
+    final videosToDispose = <String>[];
+    
+    for (final controllerId in _controller.videoControllers.keys) {
+      final controllerIndex = reels.indexWhere((reel) => reel.id == controllerId);
+      if (controllerIndex != -1) {
+        final distance = (controllerIndex - currentIndex).abs();
+        if (distance > 1) {
+          videosToDispose.add(controllerId);
+        }
       }
     }
     
-    // Preload previous 1 video for backward navigation
-    if (currentIndex > 0) {
-      final prevReel = reels[currentIndex - 1];
-      _controller.preloadVideo(prevReel.id, prevReel.videoUrl);
+    // Dispose videos immediately
+    for (final id in videosToDispose) {
+      _controller.disposeVideoController(id);
     }
-  }
-
-  void _disposeDistantVideos(int currentIndex, List<Reel> reels, int oldIndex) {
-    // Dispose videos that are more than 3 positions away
+    
+    debugPrint('Immediately disposed ${videosToDispose.length} distant videos');
+  }  void _disposeDistantVideos(int currentIndex, List<Reel> reels, int oldIndex) {
+    // Dispose videos that are more than 1 position away to save memory
     for (int i = 0; i < reels.length; i++) {
-      if ((i - currentIndex).abs() > 3 && i != oldIndex) {
+      if ((i - currentIndex).abs() > 1 && i != oldIndex) {
         final reel = reels[i];
         _controller.disposeVideoController(reel.id);
       }
@@ -214,18 +283,47 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
           return RefreshIndicator(
             onRefresh: _controller.refreshReels,
             color: AppColors.primary,
-            child: PageView.builder(
-              controller: _pageController,
-              scrollDirection: Axis.vertical,
-              itemCount: reels.length,
-              physics: const BouncingScrollPhysics(),
-              pageSnapping: true,
-              allowImplicitScrolling: true,
-              onPageChanged: (index) => _onPageChanged(index, reels),
-              itemBuilder: (context, index) {
-                final reel = reels[index];
-                return _buildReelItem(reel, index);
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (scrollNotification) {
+                // Enhanced scroll tracking for animation detection
+                if (scrollNotification is ScrollStartNotification) {
+                  _isAnimating = true;
+                } else if (scrollNotification is ScrollEndNotification) {
+                  // Delay animation end to prevent immediate page changes
+                  Future.delayed(const Duration(milliseconds: 300), () {
+                    _isAnimating = false;
+                  });
+                } else if (scrollNotification is ScrollUpdateNotification) {
+                  // Block any scroll updates during page changes
+                  if (_isPageChanging || _isAnimating) {
+                    return true;
+                  }
+                }
+                return false;
               },
+              child: PageView.builder(
+                key: const PageStorageKey('reels_page_view'),
+                controller: _pageController,
+                scrollDirection: Axis.vertical,
+                itemCount: reels.length,
+                physics: const ClampingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                pageSnapping: true,
+                allowImplicitScrolling: false,
+                padEnds: false,
+                onPageChanged: (index) => _onPageChanged(index, reels),
+                itemBuilder: (context, index) {
+                  final reel = reels[index];
+                  return RepaintBoundary(
+                    key: ValueKey('reel_boundary_${reel.id}'),
+                    child: Container(
+                      key: ValueKey('reel_${reel.id}'),
+                      child: _buildReelItem(reel, index),
+                    ),
+                  );
+                },
+              ),
             ),
           );
         },
@@ -234,17 +332,23 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildReelItem(Reel reel, int index) {
-    // Only initialize if not already done and if within visible range
+    // Only initialize if within current view range and not changing pages
     if (!_controller.videoControllers.containsKey(reel.id) && 
-        (index - _currentIndex).abs() <= 1) {
+        !_isPageChanging && 
+        (index == _currentIndex || (index - _currentIndex).abs() == 1)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _controller.preloadVideo(reel.id, reel.videoUrl);
+        if (mounted && !_isPageChanging) {
+          debugPrint('Initializing video for reel ${reel.id} at index $index');
+          if (index == _currentIndex) {
+            // For current video, initialize and play
+            _controller.initializeAndPlayVideo(reel.id, reel.videoUrl);
+          } else {
+            // For adjacent videos, just preload
+            _controller.preloadVideo(reel.id, reel.videoUrl);
+          }
         }
       });
-    }
-
-    return Obx(() {
+    }    return Obx(() {
       final isLoading = _controller.isVideoLoading(reel.id);
       final errorMessage = _controller.getVideoError(reel.id);
       final controller = _controller.getVideoController(reel.id);
@@ -334,7 +438,23 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       children: [
         GestureDetector(
           onTap: () => _controller.togglePlayPause(reel.id),
-          child: VideoPlayer(controller),
+          child: Container(
+            color: Colors.black,
+            child: Center(
+              child: controller.value.isInitialized
+                  ? FittedBox(
+                      fit: BoxFit.contain,
+                      child: SizedBox(
+                        width: controller.value.size.width,
+                        height: controller.value.size.height,
+                        child: VideoPlayer(controller),
+                      ),
+                    )
+                  : const CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
+            ),
+          ),
         ),
         // Center play/pause button
         _buildCenterPlayPauseButton(reel.id, controller),
@@ -371,21 +491,21 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         Column(
           children: [
             Obx(() => AppLikeButton(
-              isLiked: _controller.isReelLiked(reel.id),
-              likeCount: _controller.getReelLikeCount(reel.id),
-              onTap: (liked) async {
-                await _controller.toggleLike(reel.id);
-              },
-              size: 32,
-              likeCountColor: Colors.white,
-              borderColor: Colors.white,
-              showCount: false,
-            )),
+                  isLiked: _controller.isReelLiked(reel.id),
+                  likeCount: _controller.getReelLikeCount(reel.id),
+                  onTap: (liked) async {
+                    await _controller.toggleLike(reel.id);
+                  },
+                  size: 32,
+                  likeCountColor: Colors.white,
+                  borderColor: Colors.white,
+                  showCount: false,
+                )),
             const SizedBox(height: 6),
             Obx(() => Text(
-              _controller.getReelLikeCount(reel.id).toString(),
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            )),
+                  _controller.getReelLikeCount(reel.id).toString(),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                )),
           ],
         ),
 
@@ -393,30 +513,30 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
         // Comment Icon
         Obx(() => _buildActionIcon(
-          'assets/icons/comment.svg',
-          _controller.getReelCommentCount(reel.id).toString(),
-          () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => ReelCommentBottomSheet(
-                reelId: reel.id,
-              ),
-            );
-          },
-        )),
+              'assets/icons/comment.svg',
+              _controller.getReelCommentCount(reel.id).toString(),
+              () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => ReelCommentBottomSheet(
+                    reelId: reel.id,
+                  ),
+                );
+              },
+            )),
 
         const SizedBox(height: 20),
 
         // Share Icon
         Obx(() => _buildActionIcon(
-          'assets/icons/share.svg',
-          _controller.getReelShareCount(reel.id).toString(),
-          () {
-            _controller.shareReel(reel.id);
-          },
-        )),
+              'assets/icons/share.svg',
+              _controller.getReelShareCount(reel.id).toString(),
+              () {
+                _controller.shareReel(reel.id);
+              },
+            )),
 
         const SizedBox(height: 20),
 
@@ -428,14 +548,14 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
           child: Column(
             children: [
               Obx(() => Icon(
-                _controller.isReelSaved(reel.id) 
-                    ? Icons.bookmark 
-                    : Icons.bookmark_border,
-                color: _controller.isReelSaved(reel.id) 
-                    ? Colors.orange 
-                    : Colors.white,
-                size: 32,
-              )),
+                    _controller.isReelSaved(reel.id)
+                        ? Icons.bookmark
+                        : Icons.bookmark_border,
+                    color: _controller.isReelSaved(reel.id)
+                        ? Colors.orange
+                        : Colors.white,
+                    size: 32,
+                  )),
               const SizedBox(height: 6),
               const Text(
                 'Save',
@@ -682,10 +802,11 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
   // Additional interaction methods with error handling
 
-  Widget _buildCenterPlayPauseButton(String reelId, VideoPlayerController controller) {
+  Widget _buildCenterPlayPauseButton(
+      String reelId, VideoPlayerController controller) {
     return Obx(() {
       final isPlaying = _controller.isVideoPlaying(reelId);
-      
+
       // Only show play button when paused and hide after a few seconds when playing
       if (isPlaying) {
         // Hide button after 2 seconds of playing
@@ -694,7 +815,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         });
         return const SizedBox.shrink();
       }
-      
+
       return Center(
         child: GestureDetector(
           onTap: () => _togglePlayPause(reelId),
@@ -742,7 +863,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       valueListenable: controller,
       builder: (context, value, child) {
         if (!value.isInitialized) return SizedBox.shrink();
-        
+
         return Container(
           height: 2,
           child: LinearProgressIndicator(

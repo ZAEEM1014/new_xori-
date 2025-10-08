@@ -200,11 +200,7 @@ class StoryService extends GetxService {
 
   // Get like count for a story
   Stream<int> getLikeCount(String storyId) {
-    return _firestore
-        .collection('stories')
-        .doc(storyId)
-        .snapshots()
-        .map((doc) {
+    return _firestore.collection('stories').doc(storyId).snapshots().map((doc) {
       if (doc.exists && doc.data() != null) {
         final likes = doc.data()!['likes'];
         if (likes is List) {
@@ -217,11 +213,7 @@ class StoryService extends GetxService {
 
   // Check if user has liked the story
   Stream<bool> isStoryLikedByUser(String storyId, String userId) {
-    return _firestore
-        .collection('stories')
-        .doc(storyId)
-        .snapshots()
-        .map((doc) {
+    return _firestore.collection('stories').doc(storyId).snapshots().map((doc) {
       if (doc.exists && doc.data() != null) {
         final likes = doc.data()!['likes'];
         if (likes is List) {
@@ -243,9 +235,10 @@ class StoryService extends GetxService {
           .add(comment.toMap());
 
       // Update comment count in story document
-      await _firestore.collection('stories').doc(storyId).update({
-        'commentCount': FieldValue.increment(1)
-      });
+      await _firestore
+          .collection('stories')
+          .doc(storyId)
+          .update({'commentCount': FieldValue.increment(1)});
     } catch (e) {
       throw Exception('Failed to add comment: ${e.toString()}');
     }
@@ -259,18 +252,13 @@ class StoryService extends GetxService {
         .collection('comments')
         .orderBy('createdAt', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => StoryComment.fromDoc(doc))
-            .toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => StoryComment.fromDoc(doc)).toList());
   }
 
   // Get comment count for a story
   Stream<int> getCommentCount(String storyId) {
-    return _firestore
-        .collection('stories')
-        .doc(storyId)
-        .snapshots()
-        .map((doc) {
+    return _firestore.collection('stories').doc(storyId).snapshots().map((doc) {
       if (doc.exists && doc.data() != null) {
         return doc.data()!['commentCount'] ?? 0;
       }

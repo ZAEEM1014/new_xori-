@@ -15,7 +15,8 @@ class StoryCommentBottomSheet extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<StoryCommentBottomSheet> createState() => _StoryCommentBottomSheetState();
+  State<StoryCommentBottomSheet> createState() =>
+      _StoryCommentBottomSheetState();
 }
 
 class _StoryCommentBottomSheetState extends State<StoryCommentBottomSheet> {
@@ -56,7 +57,7 @@ class _StoryCommentBottomSheetState extends State<StoryCommentBottomSheet> {
       await _storyService.addComment(widget.storyId, comment);
       _commentController.clear();
       widget.onCommentAdded?.call();
-      
+
       // Optionally close the bottom sheet after adding comment
       // Get.back();
     } catch (e) {
@@ -88,7 +89,7 @@ class _StoryCommentBottomSheetState extends State<StoryCommentBottomSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Header
           Container(
             padding: const EdgeInsets.all(16),
@@ -118,9 +119,9 @@ class _StoryCommentBottomSheetState extends State<StoryCommentBottomSheet> {
               ],
             ),
           ),
-          
+
           const Divider(height: 1),
-          
+
           // Comments list
           Expanded(
             child: StreamBuilder<List<StoryComment>>(
@@ -129,9 +130,9 @@ class _StoryCommentBottomSheetState extends State<StoryCommentBottomSheet> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                
+
                 final comments = snapshot.data ?? [];
-                
+
                 if (comments.isEmpty) {
                   return const Center(
                     child: Text(
@@ -144,7 +145,7 @@ class _StoryCommentBottomSheetState extends State<StoryCommentBottomSheet> {
                     ),
                   );
                 }
-                
+
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: comments.length,
@@ -204,7 +205,7 @@ class _StoryCommentBottomSheetState extends State<StoryCommentBottomSheet> {
               },
             ),
           ),
-          
+
           // Comment input
           Container(
             padding: const EdgeInsets.all(16),
@@ -222,7 +223,8 @@ class _StoryCommentBottomSheetState extends State<StoryCommentBottomSheet> {
               children: [
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(20),
@@ -254,7 +256,8 @@ class _StoryCommentBottomSheetState extends State<StoryCommentBottomSheet> {
                             height: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
                         : const Icon(
