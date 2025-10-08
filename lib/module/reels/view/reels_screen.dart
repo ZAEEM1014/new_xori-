@@ -22,8 +22,6 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   bool _isAppInBackground = false;
   bool _isPageChanging = false;
   DateTime _lastPageChangeTime = DateTime.now();
-  bool _isAnimating = false;
-  int _lastProcessedIndex = 0;
 
   @override
   void initState() {
@@ -75,7 +73,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   Future<void> _loadReels() async {
     try {
       await _controller.loadReels();
-      
+
       // Initialize the first video after reels are loaded
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted && _controller.reels.isNotEmpty) {
@@ -134,14 +132,11 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   void _onPageChanged(int index, List<Reel> reels) {
     try {
       final now = DateTime.now();
-      
-      // Ultra-aggressive flicking prevention system
-      if (_isPageChanging || _isAnimating ||
-          now.difference(_lastPageChangeTime).inMilliseconds < 800 ||
-          index == _lastProcessedIndex) {
-        debugPrint('Page change BLOCKED: changing=$_isPageChanging, animating=$_isAnimating, '
-                  'timeDiff=${now.difference(_lastPageChangeTime).inMilliseconds}ms, '
-                  'sameIndex=${index == _lastProcessedIndex}');
+
+      // Debounce rapid page changes with longer delay
+      if (_isPageChanging ||
+          now.difference(_lastPageChangeTime).inMilliseconds < 300) {
+        debugPrint('Page change already in progress or too rapid');
         return;
       }
 
@@ -151,16 +146,14 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       }
 
       if (index == _currentIndex) {
-        debugPrint('Same page index BLOCKED: $index');
+        debugPrint('Same page index: $index');
         return;
       }
 
-      // Set all blocking flags with aggressive timestamps
+      // Set page changing flag and update timestamp immediately
       _isPageChanging = true;
-      _isAnimating = true;
-      _lastProcessedIndex = index;
       _lastPageChangeTime = now;
-      
+
       debugPrint('Page changed from $_currentIndex to $index');
 
       // Immediately dispose distant videos first to free buffer memory
@@ -192,22 +185,20 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       Future.delayed(const Duration(milliseconds: 150), () {
         _disposeDistantVideos(index, reels, oldIndex);
       });
-      
-      // Ultra-aggressive reset timers to prevent any flicking
-      Future.delayed(const Duration(milliseconds: 1200), () {
+
+      // Reset page changing flag after longer delay
+      Future.delayed(const Duration(milliseconds: 500), () {
         _isPageChanging = false;
-      });
-      
-      Future.delayed(const Duration(milliseconds: 1000), () {
-        _isAnimating = false;
       });
     } catch (e) {
       debugPrint('Error handling page change: $e');
       _isPageChanging = false;
     }
-  }  void _preloadAdjacentVideos(int currentIndex, List<Reel> reels) {
+  }
+
+  void _preloadAdjacentVideos(int currentIndex, List<Reel> reels) {
     // Only preload next video if we have available memory
-    if (currentIndex + 1 < reels.length && 
+    if (currentIndex + 1 < reels.length &&
         _controller.videoControllers.length < 2) {
       final nextReel = reels[currentIndex + 1];
       _controller.preloadVideo(nextReel.id, nextReel.videoUrl);
@@ -217,9 +208,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   void _disposeDistantVideosImmediate(int currentIndex, List<Reel> reels) {
     // Immediately dispose all videos except current and next
     final videosToDispose = <String>[];
-    
+
     for (final controllerId in _controller.videoControllers.keys) {
-      final controllerIndex = reels.indexWhere((reel) => reel.id == controllerId);
+      final controllerIndex =
+          reels.indexWhere((reel) => reel.id == controllerId);
       if (controllerIndex != -1) {
         final distance = (controllerIndex - currentIndex).abs();
         if (distance > 1) {
@@ -227,14 +219,16 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         }
       }
     }
-    
+
     // Dispose videos immediately
     for (final id in videosToDispose) {
       _controller.disposeVideoController(id);
     }
-    
+
     debugPrint('Immediately disposed ${videosToDispose.length} distant videos');
-  }  void _disposeDistantVideos(int currentIndex, List<Reel> reels, int oldIndex) {
+  }
+
+  void _disposeDistantVideos(int currentIndex, List<Reel> reels, int oldIndex) {
     // Dispose videos that are more than 1 position away to save memory
     for (int i = 0; i < reels.length; i++) {
       if ((i - currentIndex).abs() > 1 && i != oldIndex) {
@@ -285,17 +279,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
             color: AppColors.primary,
             child: NotificationListener<ScrollNotification>(
               onNotification: (scrollNotification) {
-                // Enhanced scroll tracking for animation detection
-                if (scrollNotification is ScrollStartNotification) {
-                  _isAnimating = true;
-                } else if (scrollNotification is ScrollEndNotification) {
-                  // Delay animation end to prevent immediate page changes
-                  Future.delayed(const Duration(milliseconds: 300), () {
-                    _isAnimating = false;
-                  });
-                } else if (scrollNotification is ScrollUpdateNotification) {
-                  // Block any scroll updates during page changes
-                  if (_isPageChanging || _isAnimating) {
+                if (scrollNotification is ScrollUpdateNotification) {
+                  // Prevent scrolling if page change is in progress
+                  if (_isPageChanging) {
                     return true;
                   }
                 }
@@ -306,9 +292,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
                 controller: _pageController,
                 scrollDirection: Axis.vertical,
                 itemCount: reels.length,
-                physics: const ClampingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
+                physics: const ClampingScrollPhysics(),
                 pageSnapping: true,
                 allowImplicitScrolling: false,
                 padEnds: false,
@@ -333,8 +317,8 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
   Widget _buildReelItem(Reel reel, int index) {
     // Only initialize if within current view range and not changing pages
-    if (!_controller.videoControllers.containsKey(reel.id) && 
-        !_isPageChanging && 
+    if (!_controller.videoControllers.containsKey(reel.id) &&
+        !_isPageChanging &&
         (index == _currentIndex || (index - _currentIndex).abs() == 1)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_isPageChanging) {
@@ -348,7 +332,8 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
           }
         }
       });
-    }    return Obx(() {
+    }
+    return Obx(() {
       final isLoading = _controller.isVideoLoading(reel.id);
       final errorMessage = _controller.getVideoError(reel.id);
       final controller = _controller.getVideoController(reel.id);

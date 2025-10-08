@@ -187,6 +187,19 @@ class SearchController extends GetxController {
     }
   }
 
+  void navigateToUserProfile(UserModel user) {
+    try {
+      Get.toNamed('/xori_userprofile', parameters: {'uid': user.uid});
+    } catch (e) {
+      print('Error navigating to user profile: $e');
+      Get.snackbar(
+        'Error',
+        'Failed to open user profile. Please try again.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
   bool isFollowing(String userId) {
     return followingStatus[userId] ?? false;
   }

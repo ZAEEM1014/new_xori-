@@ -193,7 +193,7 @@ class PostService {
           .map((snapshot) {
         final posts = snapshot.docs
             .map((doc) => Post.fromDoc(doc))
-            .where((post) => !post.isDeleted)
+            .where((post) => !post.isDeleted && post.mediaType != 'video')
             .toList();
         // Sort by createdAt descending (newest first) on client side
         posts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -201,6 +201,27 @@ class PostService {
       });
     } catch (e) {
       throw Exception('Failed to stream user posts: ${e.toString()}');
+    }
+  }
+
+  Stream<List<Post>> streamUserReels(String userId) {
+    try {
+      return _firestore
+          .collection(_postsCollection)
+          .where('userId', isEqualTo: userId)
+          .where('mediaType', isEqualTo: 'video')
+          .snapshots()
+          .map((snapshot) {
+        final reels = snapshot.docs
+            .map((doc) => Post.fromDoc(doc))
+            .where((reel) => !reel.isDeleted)
+            .toList();
+        // Sort by createdAt descending (newest first) on client side
+        reels.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return reels;
+      });
+    } catch (e) {
+      throw Exception('Failed to stream user reels: ${e.toString()}');
     }
   }
 

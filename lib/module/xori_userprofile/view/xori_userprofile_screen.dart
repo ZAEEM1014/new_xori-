@@ -17,10 +17,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class _FollowButton extends StatelessWidget {
   final String currentUserId;
   final FollowUser targetUser;
+  final VoidCallback? onFollowToggled;
   final FollowService _followService = FollowService();
 
   _FollowButton(
-      {required this.currentUserId, required this.targetUser, Key? key})
+      {required this.currentUserId, required this.targetUser, this.onFollowToggled, Key? key})
       : super(key: key);
 
   @override
@@ -42,6 +43,10 @@ class _FollowButton extends StatelessWidget {
           ),
           onPressed: () async {
             await _followService.toggleFollow(currentUserId, targetUser);
+            // Refresh counts after follow/unfollow
+            if (onFollowToggled != null) {
+              onFollowToggled!();
+            }
           },
           child: Text(
             isFollowing ? 'Following' : 'Follow',
@@ -145,26 +150,26 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
 
                 const SizedBox(height: 10),
 
-                /// Stats (placeholders, replace with real data if available)
+                /// Stats
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30),
-                  child: Row(
+                  child: Obx(() => Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: const [
+                    children: [
                       _StatItem(
-                        title: '0',
+                        title: controller.postsCount.value.toString(),
                         subtitle: "Posts",
                       ),
                       _StatItem(
-                        title: '0',
+                        title: controller.followersCount.value.toString(),
                         subtitle: "Followers",
                       ),
                       _StatItem(
-                        title: '0',
+                        title: controller.followingCount.value.toString(),
                         subtitle: "Following",
                       ),
                     ],
-                  ),
+                  )),
                 ),
 
                 const SizedBox(height: 20),
@@ -184,6 +189,10 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
                                 controller.user.value.profileImageUrl ?? '',
                             followedAt: Timestamp.now(),
                           ),
+                          onFollowToggled: () {
+                            // Refresh counts when follow/unfollow happens
+                            controller.refreshCounts();
+                          },
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -363,90 +372,110 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
   }
 
   Widget _buildStaggeredGridReels() {
-    try {
-      final images = [
-        AppAssets.searchedImg1,
-        AppAssets.searchedImg2,
-        AppAssets.searchedImg3,
-        AppAssets.searchedImg4,
-        AppAssets.searchedImg5,
-      ];
-      final heights = [200.0, 180.0, 220.0, 160.0, 140.0];
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: MasonryGridView.count(
-          crossAxisCount: 2,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: images.length,
-          itemBuilder: (context, index) {
-            try {
-              return _gridImage(images[index], height: heights[index]);
-            } catch (e) {
+    return StreamBuilder<List<Post>>(
+      stream: controller.userReelsStream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32.0),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasError) {
+          print(
+              '[DEBUG] XoriUserProfileScreen: Error loading reels: ${snapshot.error}');
+          return const SizedBox(
+            height: 200,
+            child: Center(
+              child: Text('Unable to load reels',
+                  style: TextStyle(color: Colors.grey)),
+            ),
+          );
+        }
+        final reels = snapshot.data ?? [];
+        if (reels.isEmpty) {
+          return const SizedBox(
+            height: 200,
+            child: Center(
+              child: Text('No reels yet', style: TextStyle(color: Colors.grey)),
+            ),
+          );
+        }
+        final heights = [200.0, 180.0, 220.0, 160.0, 140.0, 240.0, 180.0, 200.0];
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: MasonryGridView.count(
+            crossAxisCount: 2,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: reels.length,
+            itemBuilder: (context, index) {
+              final reel = reels[index];
+              final height = heights[index % heights.length];
+              return _buildReelGridItem(reel, height: height);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReelGridItem(Post reel, {double height = 200}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
+        children: [
+          Image.network(
+            reel.mediaUrls.isNotEmpty ? reel.mediaUrls.first : '',
+            fit: BoxFit.cover,
+            height: height,
+            width: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
               print(
-                  '[DEBUG] XoriUserProfileScreen: Error building grid item: $e');
+                  '[DEBUG] XoriUserProfileScreen: Error loading reel ${reel.mediaUrls.isNotEmpty ? reel.mediaUrls.first : 'no-url'}: $error');
               return Container(
-                height: heights[index],
+                height: height,
+                width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.error_outline, color: Colors.grey),
+                child: const Icon(Icons.videocam, color: Colors.grey, size: 40),
               );
-            }
-          },
-        ),
-      );
-    } catch (e) {
-      print('[DEBUG] XoriUserProfileScreen: Error building reels grid: $e');
-      return const SizedBox(
-        height: 200,
-        child: Center(
-          child: Text('Unable to load reels',
-              style: TextStyle(color: Colors.grey)),
-        ),
-      );
-    }
-  }
-
-  Widget _gridImage(String asset, {double height = 160}) {
-    try {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Image.asset(
-          asset,
-          fit: BoxFit.cover,
-          height: height,
-          width: double.infinity,
-          errorBuilder: (context, error, stackTrace) {
-            print(
-                '[DEBUG] XoriUserProfileScreen: Error loading image $asset: $error');
-            return Container(
-              height: height,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(16),
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                height: height,
+                color: Colors.grey[200],
+                child: const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            },
+          ),
+          // Play icon overlay for reels
+          Positioned.fill(
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.play_arrow,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
-              child: const Icon(Icons.image_not_supported, color: Colors.grey),
-            );
-          },
-        ),
-      );
-    } catch (e) {
-      print('[DEBUG] XoriUserProfileScreen: Error creating grid image: $e');
-      return Container(
-        height: height,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: const Icon(Icons.error_outline, color: Colors.grey),
-      );
-    }
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Open chat with the current user being viewed

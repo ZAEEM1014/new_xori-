@@ -5,9 +5,11 @@ import 'dart:async';
 import '../../../models/user_model.dart';
 import '../../../models/post_model.dart';
 import '../../../services/post_service.dart';
+import '../../../services/follow_service.dart';
 
 class ProfileController extends GetxController {
   final PostService _postService = PostService();
+  final FollowService _followService = FollowService();
 
   // Stream subscriptions
   StreamSubscription<DocumentSnapshot>? _userStreamSubscription;
@@ -23,8 +25,8 @@ class ProfileController extends GetxController {
 
   // Real user statistics
   var posts = 0.obs;
-  var followers = 1500.obs;
-  var following = 100.obs;
+  var followers = 0.obs;
+  var following = 0.obs;
 
   // User posts data
   var userPosts = <Post>[].obs;
@@ -72,6 +74,10 @@ class ProfileController extends GetxController {
             final personalityTraits =
                 List<String>.from(data['personalityTraits'] ?? []);
             bio.value = personalityTraits.join(' | '); // Join traits with pipes
+
+            // Update follower/following counts from Firestore
+            followers.value = data['followersCount'] ?? 0;
+            following.value = data['followingCount'] ?? 0;
           }
         } catch (e) {
           print('Error processing user data: $e');

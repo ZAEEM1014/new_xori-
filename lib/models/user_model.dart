@@ -14,6 +14,8 @@ class UserModel {
   final DateTime createdAt;
   final String bio;
   final List<String> personalityTraits;
+  final int followersCount;
+  final int followingCount;
 
   UserModel({
     required this.uid,
@@ -23,6 +25,8 @@ class UserModel {
     required this.createdAt,
     required this.bio,
     this.personalityTraits = const [],
+    this.followersCount = 0,
+    this.followingCount = 0,
   });
 
   // Empty user model
@@ -34,6 +38,8 @@ class UserModel {
     createdAt: DateTime.now(),
     bio: '',
     personalityTraits: [],
+    followersCount: 0,
+    followingCount: 0,
   );
 
   // Convert model to JSON
@@ -46,6 +52,8 @@ class UserModel {
       'createdAt': createdAt.toIso8601String(),
       'bio': bio,
       'personalityTraits': personalityTraits,
+      'followersCount': followersCount,
+      'followingCount': followingCount,
     };
   }
 
@@ -61,6 +69,8 @@ class UserModel {
           : DateTime.now(),
       bio: json['bio'] ?? '',
       personalityTraits: List<String>.from(json['personalityTraits'] ?? []),
+      followersCount: json['followersCount'] ?? 0,
+      followingCount: json['followingCount'] ?? 0,
     );
   }
 
@@ -73,6 +83,8 @@ class UserModel {
     DateTime? createdAt,
     String? bio,
     List<String>? personalityTraits,
+    int? followersCount,
+    int? followingCount,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -82,6 +94,8 @@ class UserModel {
       createdAt: createdAt ?? this.createdAt,
       bio: bio ?? this.bio,
       personalityTraits: personalityTraits ?? this.personalityTraits,
+      followersCount: followersCount ?? this.followersCount,
+      followingCount: followingCount ?? this.followingCount,
     );
   }
 }
