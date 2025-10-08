@@ -123,6 +123,7 @@ class HomePage extends GetView<HomeController> {
                         separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (context, index) {
                           return Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
                                 width: 58,
@@ -140,12 +141,14 @@ class HomePage extends GetView<HomeController> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Container(
-                                width: 40,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(5),
+                              Flexible(
+                                child: Container(
+                                  width: 40,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
                                 ),
                               ),
                             ],
@@ -159,6 +162,7 @@ class HomePage extends GetView<HomeController> {
                           onTap: controller.refreshStories,
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.refresh, color: Colors.grey[600]),
                               const SizedBox(height: 4),
@@ -190,6 +194,7 @@ class HomePage extends GetView<HomeController> {
                             }
                           },
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
                                 width: 58,
@@ -260,13 +265,15 @@ class HomePage extends GetView<HomeController> {
                                       ),
                               ),
                               const SizedBox(height: 4),
-                              SizedBox(
-                                width: 58,
-                                child: Text(
-                                  status['name'] as String? ?? '',
-                                  style: const TextStyle(fontSize: 13),
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
+                              Flexible(
+                                child: SizedBox(
+                                  width: 58,
+                                  child: Text(
+                                    status['name'] as String? ?? '',
+                                    style: const TextStyle(fontSize: 13),
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               ),
                             ],

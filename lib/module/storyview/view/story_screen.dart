@@ -264,79 +264,94 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                       }),
                     ),
                   ),
-                  // Bottom message input and like button
+                  // Bottom message input and like button (responsive)
+
                   Positioned(
-                    bottom: 20,
                     left: 12,
                     right: 12,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              // Show comment bottom sheet
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (context) => StoryCommentBottomSheet(
-                                  storyId: story.storyId,
-                                ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.black54,
-                                borderRadius: BorderRadius.circular(25),
-                                border: Border.all(color: Colors.white38),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Text(
-                                    "Type a Message",
-                                    style: TextStyle(color: Colors.white70),
+                    bottom: 0,
+                    child: SafeArea(
+                      top: false,
+                      left: false,
+                      right: false,
+                      bottom: true,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  // Show comment bottom sheet
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (context) =>
+                                        StoryCommentBottomSheet(
+                                      storyId: story.storyId,
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.circular(25),
+                                    border: Border.all(color: Colors.white38),
                                   ),
-                                  const Spacer(),
-                                  Obx(() {
-                                    final commentCount = controller.currentStoryCommentCount;
-                                    if (commentCount > 0) {
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          gradient: AppColors.appGradient,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Text(
-                                          '$commentCount',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                    return const SizedBox.shrink();
-                                  }),
-                                ],
+                                  child: Row(
+                                    children: [
+                                      const Text(
+                                        "Type a Message",
+                                        style: TextStyle(color: Colors.white70),
+                                      ),
+                                      const Spacer(),
+                                      Obx(() {
+                                        final commentCount =
+                                            controller.currentStoryCommentCount;
+                                        if (commentCount > 0) {
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              gradient: AppColors.appGradient,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              '$commentCount',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                        return const SizedBox.shrink();
+                                      }),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                            const SizedBox(width: 10),
+                            // Like button with gradient count color
+                            Obx(() => AppLikeButton(
+                                  isLiked: controller.isCurrentStoryLiked,
+                                  likeCount: controller.currentStoryLikeCount,
+                                  onTap: (liked) {
+                                    controller.toggleLike(story.storyId);
+                                  },
+                                  size: 32,
+                                  borderColor: Colors.white,
+                                  likeCountColor: Colors.white,
+                                )),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        // Like button with gradient count color
-                        Obx(() => AppLikeButton(
-                          isLiked: controller.isCurrentStoryLiked,
-                          likeCount: controller.currentStoryLikeCount,
-                          onTap: (liked) {
-                            controller.toggleLike(story.storyId);
-                          },
-                          size: 32,
-                          borderColor: Colors.white,
-                          likeCountColor: Colors.white,
-                        )),
-                      ],
+                      ),
                     ),
                   ),
                 ],

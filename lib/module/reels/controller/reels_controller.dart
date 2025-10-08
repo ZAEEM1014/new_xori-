@@ -3,12 +3,17 @@ import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import '../../../services/reel_service.dart';
 import '../../../services/cloudinary_service.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/firestore_service.dart';
 import '../../../models/reel_model.dart';
+import '../../../models/reel_comment_model.dart';
 
 enum ContentType { video, image }
 
 class ReelController extends GetxController {
   final ReelService _reelService = ReelService();
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = Get.find<FirestoreService>();
 
   // Reactive variables for reels
   var reels = <Reel>[].obs;
@@ -20,6 +25,18 @@ class ReelController extends GetxController {
   var videoControllers = <String, VideoPlayerController>{}.obs;
   var videoLoadingStates = <String, bool>{}.obs;
   var videoErrorStates = <String, String>{}.obs;
+
+  // Like, comment, share, and save related observables
+  var reelLikeStates = <String, bool>{}.obs;
+  var reelLikeCounts = <String, int>{}.obs;
+  var reelCommentCounts = <String, int>{}.obs;
+  var reelShareCounts = <String, int>{}.obs;
+  var reelSaveStates = <String, bool>{}.obs;
+  
+  // Video control states
+  var isMuted = false.obs;
+  var currentPlayingReelId = ''.obs;
+  var videoPlayStates = <String, bool>{}.obs;
 
   @override
   void onInit() {
@@ -42,6 +59,9 @@ class ReelController extends GetxController {
         videoLoadingStates[reel.id] = true;
         videoErrorStates[reel.id] = '';
       }
+
+      // Initialize like, comment, share, and save states
+      _initializeInteractionData();
     } catch (e) {
       hasError.value = true;
       errorMessage.value = 'Failed to load reels: ${e.toString()}';
@@ -102,6 +122,23 @@ class ReelController extends GetxController {
   /// Initialize video player for a specific reel with fallback URL attempts
   Future<void> initializeVideoPlayer(String reelId, String videoUrl) async {
     try {
+      // If already initializing, wait for it to complete
+      if (videoLoadingStates[reelId] == true) {
+        // Wait for current initialization to complete
+        while (videoLoadingStates[reelId] == true) {
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
+        return;
+      }
+
+      // If already initialized and working, don't reinitialize
+      final existingController = videoControllers[reelId];
+      if (existingController != null && 
+          existingController.value.isInitialized && 
+          !existingController.value.hasError) {
+        return;
+      }
+
       // Set loading state
       videoLoadingStates[reelId] = true;
       videoErrorStates[reelId] = '';
@@ -239,7 +276,7 @@ class ReelController extends GetxController {
 
     // Set looping and volume
     await controller.setLooping(true);
-    await controller.setVolume(1.0);
+    await controller.setVolume(isMuted.value ? 0.0 : 1.0);
 
     // Verify initialization
     if (!controller.value.isInitialized || controller.value.hasError) {
@@ -277,9 +314,39 @@ class ReelController extends GetxController {
 
   /// Play video for a specific reel
   Future<void> playVideo(String reelId) async {
-    final controller = videoControllers[reelId];
-    if (controller != null && controller.value.isInitialized) {
-      await controller.play();
+    try {
+      final controller = videoControllers[reelId];
+      if (controller != null && 
+          controller.value.isInitialized && 
+          !controller.value.hasError) {
+        
+        // Pause all other videos first (but not this one)
+        for (final entry in videoControllers.entries) {
+          if (entry.key != reelId && entry.value.value.isPlaying) {
+            await entry.value.pause();
+            videoPlayStates[entry.key] = false;
+          }
+        }
+        
+        // Set volume based on mute state
+        await controller.setVolume(isMuted.value ? 0.0 : 1.0);
+        
+        // Seek to beginning if at end
+        if (controller.value.position >= controller.value.duration) {
+          await controller.seekTo(Duration.zero);
+        }
+        
+        // Play the video
+        if (!controller.value.isPlaying) {
+          await controller.play();
+        }
+        
+        // Update state
+        currentPlayingReelId.value = reelId;
+        videoPlayStates[reelId] = true;
+      }
+    } catch (e) {
+      debugPrint('Error playing video $reelId: $e');
     }
   }
 
@@ -288,6 +355,11 @@ class ReelController extends GetxController {
     final controller = videoControllers[reelId];
     if (controller != null && controller.value.isInitialized) {
       await controller.pause();
+      videoPlayStates[reelId] = false;
+      
+      if (currentPlayingReelId.value == reelId) {
+        currentPlayingReelId.value = '';
+      }
     }
   }
 
@@ -353,14 +425,38 @@ class ReelController extends GetxController {
     videoErrorStates.clear();
   }
 
+  /// Dispose a specific video controller
+  Future<void> disposeVideoController(String reelId) async {
+    try {
+      final controller = videoControllers[reelId];
+      if (controller != null) {
+        await controller.dispose();
+        videoControllers.remove(reelId);
+        videoLoadingStates.remove(reelId);
+        videoErrorStates.remove(reelId);
+        videoPlayStates.remove(reelId);
+        
+        if (currentPlayingReelId.value == reelId) {
+          currentPlayingReelId.value = '';
+        }
+      }
+    } catch (e) {
+      debugPrint('Error disposing video controller for reel $reelId: $e');
+    }
+  }
+
   /// Pause all videos
   Future<void> pauseAllVideos() async {
     try {
-      for (final controller in videoControllers.values) {
+      for (final entry in videoControllers.entries) {
+        final reelId = entry.key;
+        final controller = entry.value;
         if (controller.value.isInitialized && controller.value.isPlaying) {
           await controller.pause();
+          videoPlayStates[reelId] = false;
         }
       }
+      currentPlayingReelId.value = '';
     } catch (e) {
       debugPrint('Error pausing all videos: $e');
     }
@@ -381,7 +477,23 @@ class ReelController extends GetxController {
   /// Initialize and play video in one call
   Future<void> initializeAndPlayVideo(String reelId, String videoUrl) async {
     try {
+      // Check if already initialized and playing
+      final existingController = videoControllers[reelId];
+      if (existingController != null && 
+          existingController.value.isInitialized && 
+          !existingController.value.hasError) {
+        // Just play if already initialized
+        await playVideo(reelId);
+        return;
+      }
+
+      // Initialize if not already done
       await initializeVideoPlayer(reelId, videoUrl);
+      
+      // Small delay to ensure initialization is complete
+      await Future.delayed(const Duration(milliseconds: 50));
+      
+      // Play the video
       await playVideo(reelId);
     } catch (e) {
       debugPrint('Error initializing and playing video $reelId: $e');
@@ -434,23 +546,164 @@ class ReelController extends GetxController {
     }
   }
 
+  /// Initialize interaction data for reels
+  void _initializeInteractionData() {
+    final currentUserId = _authService.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    for (final reel in reels) {
+      // Initialize like states
+      _reelService.isReelLikedByUser(reel.id, currentUserId).listen((isLiked) {
+        reelLikeStates[reel.id] = isLiked;
+      });
+
+      // Initialize like counts
+      _reelService.getLikeCount(reel.id).listen((count) {
+        reelLikeCounts[reel.id] = count;
+      });
+
+      // Initialize comment counts
+      _reelService.getCommentCount(reel.id).listen((count) {
+        reelCommentCounts[reel.id] = count;
+      });
+
+      // Initialize share counts
+      _reelService.getShareCount(reel.id).listen((count) {
+        reelShareCounts[reel.id] = count;
+      });
+
+      // Initialize save states
+      _reelService.isReelSavedByUser(currentUserId, reel.id).listen((isSaved) {
+        reelSaveStates[reel.id] = isSaved;
+      });
+    }
+  }
+
   /// Toggle like for a specific reel
   Future<void> toggleLike(String reelId) async {
+    final currentUserId = _authService.currentUser?.uid;
+    if (currentUserId == null) return;
+
     try {
-      // Find the reel in the list
-      final reelIndex = reels.indexWhere((reel) => reel.id == reelId);
-      if (reelIndex != -1) {
-        // For now, just update the UI - implement Firebase logic later
-        // In a real implementation, you would update Firestore here
-        debugPrint('Toggle like for reel: $reelId');
-        // This would typically involve:
-        // 1. Check if current user has liked this reel
-        // 2. Update Firestore document
-        // 3. Update local state
-        // For now, just acknowledge the action
+      final isCurrentlyLiked = reelLikeStates[reelId] ?? false;
+      if (isCurrentlyLiked) {
+        await _reelService.unlikeReel(reelId, currentUserId);
+      } else {
+        await _reelService.likeReel(reelId, currentUserId);
       }
     } catch (e) {
-      debugPrint('Error toggling like for reel $reelId: $e');
+      Get.snackbar('Error', 'Failed to update like: ${e.toString()}');
+    }
+  }
+
+  /// Add comment to a reel
+  Future<void> addComment(String reelId, String text) async {
+    final currentUserId = _authService.currentUser?.uid;
+    if (currentUserId == null || text.trim().isEmpty) return;
+
+    try {
+      // Get current user info
+      final userDoc = await _firestoreService.getUser(currentUserId);
+      if (userDoc == null) return;
+
+      final comment = ReelComment(
+        id: '', // Will be auto-generated by Firestore
+        userId: currentUserId,
+        username: userDoc.username,
+        userPhotoUrl: userDoc.profileImageUrl ?? '',
+        text: text.trim(),
+        createdAt: DateTime.now(),
+      );
+
+      await _reelService.addComment(reelId, comment);
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to add comment: ${e.toString()}');
+    }
+  }
+
+  /// Share a reel
+  Future<void> shareReel(String reelId) async {
+    final currentUserId = _authService.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    try {
+      await _reelService.shareReel(reelId, currentUserId);
+      Get.snackbar('Success', 'Reel shared successfully!');
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to share reel: ${e.toString()}');
+    }
+  }
+
+  /// Toggle save for a specific reel
+  Future<void> toggleSave(String reelId) async {
+    final currentUserId = _authService.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    try {
+      final isCurrentlySaved = reelSaveStates[reelId] ?? false;
+      if (isCurrentlySaved) {
+        await _reelService.unsaveReel(currentUserId, reelId);
+        Get.snackbar('Success', 'Reel unsaved');
+      } else {
+        await _reelService.saveReel(currentUserId, reelId);
+        Get.snackbar('Success', 'Reel saved');
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to update save status: ${e.toString()}');
+    }
+  }
+
+  /// Get like state for a reel
+  bool isReelLiked(String reelId) {
+    return reelLikeStates[reelId] ?? false;
+  }
+
+  /// Get like count for a reel
+  int getReelLikeCount(String reelId) {
+    return reelLikeCounts[reelId] ?? 0;
+  }
+
+  /// Get comment count for a reel
+  int getReelCommentCount(String reelId) {
+    return reelCommentCounts[reelId] ?? 0;
+  }
+
+  /// Get share count for a reel
+  int getReelShareCount(String reelId) {
+    return reelShareCounts[reelId] ?? 0;
+  }
+
+  /// Get save state for a reel
+  bool isReelSaved(String reelId) {
+    return reelSaveStates[reelId] ?? false;
+  }
+  
+  /// Toggle mute/unmute for all videos
+  Future<void> toggleMute() async {
+    isMuted.value = !isMuted.value;
+    
+    // Update volume for all initialized video controllers
+    for (final controller in videoControllers.values) {
+      if (controller.value.isInitialized) {
+        await controller.setVolume(isMuted.value ? 0.0 : 1.0);
+      }
+    }
+  }
+  
+  /// Check if video is playing
+  bool isVideoPlaying(String reelId) {
+    return videoPlayStates[reelId] ?? false;
+  }
+  
+  /// Toggle play/pause for a specific reel
+  Future<void> togglePlayPause(String reelId) async {
+    final controller = videoControllers[reelId];
+    if (controller != null && controller.value.isInitialized) {
+      if (controller.value.isPlaying) {
+        await pauseVideo(reelId);
+      } else {
+        await playVideo(reelId);
+      }
     }
   }
 }

@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import '../../../constants/app_colors.dart';
 import '../../../widgets/app_like_button.dart';
-import '../../../widgets/saved_button.dart';
+import '../../../widgets/reel_comment_bottom_sheet.dart';
 import '../../../models/reel_model.dart';
 import '../controller/reels_controller.dart';
 
@@ -120,30 +120,58 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
   void _onPageChanged(int index, List<Reel> reels) {
     try {
-      if (index != _currentIndex && index < reels.length) {
-        // Pause previous video
+      if (index >= 0 && index < reels.length && index != _currentIndex) {
+        debugPrint('Page changed from $_currentIndex to $index');
+        
+        // Pause previous video immediately
         if (_currentIndex >= 0 && _currentIndex < reels.length) {
-          _controller.pauseVideo(reels[_currentIndex].id);
+          final prevReel = reels[_currentIndex];
+          _controller.pauseVideo(prevReel.id);
         }
 
-        // Update current index
-        setState(() {
-          _currentIndex = index;
-        });
+        // Update current index immediately
+        final oldIndex = _currentIndex;
+        _currentIndex = index;
 
-        // Play current video
+        // Initialize and play current video immediately
         final currentReel = reels[index];
-        _controller.initializeAndPlayVideo(
-            currentReel.id, currentReel.videoUrl);
+        _controller.initializeAndPlayVideo(currentReel.id, currentReel.videoUrl);
 
-        // Preload next video
-        if (index + 1 < reels.length) {
-          final nextReel = reels[index + 1];
-          _controller.preloadVideo(nextReel.id, nextReel.videoUrl);
-        }
+        // Preload adjacent videos for smooth navigation
+        _preloadAdjacentVideos(index, reels);
+        
+        // Dispose distant videos to free memory
+        _disposeDistantVideos(index, reels, oldIndex);
       }
     } catch (e) {
       debugPrint('Error handling page change: $e');
+    }
+  }
+
+  void _preloadAdjacentVideos(int currentIndex, List<Reel> reels) {
+    // Preload next 2 videos
+    for (int i = 1; i <= 2; i++) {
+      final nextIndex = currentIndex + i;
+      if (nextIndex < reels.length) {
+        final reel = reels[nextIndex];
+        _controller.preloadVideo(reel.id, reel.videoUrl);
+      }
+    }
+    
+    // Preload previous 1 video for backward navigation
+    if (currentIndex > 0) {
+      final prevReel = reels[currentIndex - 1];
+      _controller.preloadVideo(prevReel.id, prevReel.videoUrl);
+    }
+  }
+
+  void _disposeDistantVideos(int currentIndex, List<Reel> reels, int oldIndex) {
+    // Dispose videos that are more than 3 positions away
+    for (int i = 0; i < reels.length; i++) {
+      if ((i - currentIndex).abs() > 3 && i != oldIndex) {
+        final reel = reels[i];
+        _controller.disposeVideoController(reel.id);
+      }
     }
   }
 
@@ -190,19 +218,12 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
               controller: _pageController,
               scrollDirection: Axis.vertical,
               itemCount: reels.length,
+              physics: const BouncingScrollPhysics(),
+              pageSnapping: true,
+              allowImplicitScrolling: true,
               onPageChanged: (index) => _onPageChanged(index, reels),
               itemBuilder: (context, index) {
                 final reel = reels[index];
-
-                // Auto-play first video when it's initialized
-                if (index == 0 && _currentIndex == 0) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (_controller.isVideoInitialized(reel.id)) {
-                      _controller.playVideo(reel.id);
-                    }
-                  });
-                }
-
                 return _buildReelItem(reel, index);
               },
             ),
@@ -213,12 +234,15 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildReelItem(Reel reel, int index) {
-    // Initialize video player when reel is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !_controller.videoControllers.containsKey(reel.id)) {
-        _controller.initializeVideoPlayer(reel.id, reel.videoUrl);
-      }
-    });
+    // Only initialize if not already done and if within visible range
+    if (!_controller.videoControllers.containsKey(reel.id) && 
+        (index - _currentIndex).abs() <= 1) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _controller.preloadVideo(reel.id, reel.videoUrl);
+        }
+      });
+    }
 
     return Obx(() {
       final isLoading = _controller.isVideoLoading(reel.id);
@@ -240,6 +264,17 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
               onTap: () => _togglePlayPause(reel.id),
               child: Container(color: Colors.transparent),
             ),
+          ),
+
+          // Center Play/Pause Button
+          if (isInitialized && controller != null)
+            _buildCenterPlayPauseButton(reel.id, controller),
+
+          // Mute/Unmute Button (Top Right)
+          Positioned(
+            top: 50,
+            right: 15,
+            child: _buildMuteButton(),
           ),
 
           // Right Side Action Icons
@@ -294,7 +329,30 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       );
     }
 
-    return VideoPlayer(controller);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        GestureDetector(
+          onTap: () => _controller.togglePlayPause(reel.id),
+          child: VideoPlayer(controller),
+        ),
+        // Center play/pause button
+        _buildCenterPlayPauseButton(reel.id, controller),
+        // Mute button in top right
+        Positioned(
+          top: 50,
+          right: 16,
+          child: _buildMuteButton(),
+        ),
+        // Progress indicator at bottom
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: _buildProgressIndicator(controller),
+        ),
+      ],
+    );
   }
 
   Widget _buildMixedContentWidget(Reel reel, String errorMessage) {
@@ -302,15 +360,8 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     return _buildVideoErrorWidget(errorMessage, reel);
   }
 
-  void _togglePlayPause(String reelId) {
-    final controller = _controller.getVideoController(reelId);
-    if (controller != null && controller.value.isInitialized) {
-      if (controller.value.isPlaying) {
-        _controller.pauseVideo(reelId);
-      } else {
-        _controller.playVideo(reelId);
-      }
-    }
+  void _togglePlayPause(String reelId) async {
+    await _controller.togglePlayPause(reelId);
   }
 
   Widget _buildActionButtons(Reel reel) {
@@ -319,55 +370,79 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         // Like Button
         Column(
           children: [
-            AppLikeButton(
-              isLiked: false, // You can implement like state logic here
-              likeCount: reel.likes.length,
+            Obx(() => AppLikeButton(
+              isLiked: _controller.isReelLiked(reel.id),
+              likeCount: _controller.getReelLikeCount(reel.id),
               onTap: (liked) async {
-                // Implement like functionality
-                // await _controller.toggleReelLike(reel.id, currentUserId, liked);
+                await _controller.toggleLike(reel.id);
               },
               size: 32,
               likeCountColor: Colors.white,
               borderColor: Colors.white,
               showCount: false,
-            ),
+            )),
             const SizedBox(height: 6),
-            Text(
-              reel.likes.length.toString(),
+            Obx(() => Text(
+              _controller.getReelLikeCount(reel.id).toString(),
               style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
+            )),
           ],
         ),
 
         const SizedBox(height: 20),
 
         // Comment Icon
-        _buildActionIcon(
+        Obx(() => _buildActionIcon(
           'assets/icons/comment.svg',
-          reel.commentCount.toString(),
+          _controller.getReelCommentCount(reel.id).toString(),
           () {
-            // Handle comment tap
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => ReelCommentBottomSheet(
+                reelId: reel.id,
+              ),
+            );
           },
-        ),
+        )),
 
         const SizedBox(height: 20),
 
         // Share Icon
-        _buildActionIcon(
+        Obx(() => _buildActionIcon(
           'assets/icons/share.svg',
-          'Share',
+          _controller.getReelShareCount(reel.id).toString(),
           () {
-            // Handle share tap
+            _controller.shareReel(reel.id);
           },
-        ),
+        )),
 
         const SizedBox(height: 20),
 
         // Saved Button
-        SavedButton(
-          postId: reel.id,
-          size: 32,
-          initialColor: Colors.white,
+        GestureDetector(
+          onTap: () {
+            _controller.toggleSave(reel.id);
+          },
+          child: Column(
+            children: [
+              Obx(() => Icon(
+                _controller.isReelSaved(reel.id) 
+                    ? Icons.bookmark 
+                    : Icons.bookmark_border,
+                color: _controller.isReelSaved(reel.id) 
+                    ? Colors.orange 
+                    : Colors.white,
+                size: 32,
+              )),
+              const SizedBox(height: 6),
+              const Text(
+                'Save',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -606,105 +681,79 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   }
 
   // Additional interaction methods with error handling
-  void _toggleLike(String reelId) {
-    try {
-      // Implement like functionality
-      _controller.toggleLike(reelId);
-    } catch (e) {
-      debugPrint('Error toggling like: $e');
-      _showErrorSnackBar('Failed to update like status');
-    }
-  }
 
-  void _showComments(String reelId) {
-    try {
-      // Navigate to comments or show comments bottom sheet
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 10),
-                height: 4,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'Comments',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const Expanded(
-                child: Center(
-                  child: Text('Comments feature coming soon!'),
-                ),
-              ),
-            ],
+  Widget _buildCenterPlayPauseButton(String reelId, VideoPlayerController controller) {
+    return Obx(() {
+      final isPlaying = _controller.isVideoPlaying(reelId);
+      
+      // Only show play button when paused and hide after a few seconds when playing
+      if (isPlaying) {
+        // Hide button after 2 seconds of playing
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) setState(() {});
+        });
+        return const SizedBox.shrink();
+      }
+      
+      return Center(
+        child: GestureDetector(
+          onTap: () => _togglePlayPause(reelId),
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.6),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.play_arrow,
+              color: Colors.white,
+              size: 50,
+            ),
           ),
         ),
       );
-    } catch (e) {
-      debugPrint('Error showing comments: $e');
-      _showErrorSnackBar('Failed to show comments');
-    }
+    });
   }
 
-  void _shareReel(Reel reel) {
-    try {
-      // Implement share functionality
-      // Share.share('Check out this reel: ${reel.videoUrl}');
-      _showErrorSnackBar('Share feature coming soon!');
-    } catch (e) {
-      debugPrint('Error sharing reel: $e');
-      _showErrorSnackBar('Failed to share reel');
-    }
+  Widget _buildMuteButton() {
+    return Obx(() {
+      return GestureDetector(
+        onTap: () => _controller.toggleMute(),
+        child: Container(
+          width: 45,
+          height: 45,
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.6),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            _controller.isMuted.value ? Icons.volume_off : Icons.volume_up,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
+      );
+    });
   }
 
-  void _retryVideo(Reel reel) {
-    try {
-      _controller.retryVideoInitialization(reel.id, reel.videoUrl);
-    } catch (e) {
-      debugPrint('Error retrying video: $e');
-      _showErrorSnackBar('Failed to retry video');
-    }
-  }
-
-  void _showErrorSnackBar(String message) {
-    try {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: 'OK',
-              textColor: Colors.white,
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              },
-            ),
+  Widget _buildProgressIndicator(VideoPlayerController controller) {
+    return ValueListenableBuilder<VideoPlayerValue>(
+      valueListenable: controller,
+      builder: (context, value, child) {
+        if (!value.isInitialized) return SizedBox.shrink();
+        
+        return Container(
+          height: 2,
+          child: LinearProgressIndicator(
+            value: value.duration.inMilliseconds > 0
+                ? value.position.inMilliseconds / value.duration.inMilliseconds
+                : 0.0,
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            backgroundColor: Colors.white.withOpacity(0.3),
           ),
         );
-      }
-    } catch (e) {
-      debugPrint('Error showing error snackbar: $e');
-    }
+      },
+    );
   }
 }

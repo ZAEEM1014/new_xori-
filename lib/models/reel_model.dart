@@ -9,6 +9,7 @@ class Reel {
   final String caption;
   final List<String> likes;
   final int commentCount;
+  final int shareCount;
   final Timestamp createdAt;
   final bool isDeleted;
 
@@ -21,6 +22,7 @@ class Reel {
     required this.caption,
     required this.likes,
     required this.commentCount,
+    required this.shareCount,
     required this.createdAt,
     this.isDeleted = false,
   });
@@ -57,6 +59,7 @@ class Reel {
       caption: data['caption'] as String? ?? '',
       likes: _safeStringList(data['likes']),
       commentCount: _safeInt(data['commentCount']),
+      shareCount: _safeInt(data['shareCount']),
       createdAt: _safeTimestamp(data['createdAt']),
       isDeleted: data['isDeleted'] is bool ? data['isDeleted'] : false,
     );
@@ -71,6 +74,7 @@ class Reel {
       'caption': caption,
       'likes': likes,
       'commentCount': commentCount,
+      'shareCount': shareCount,
       'createdAt': createdAt,
       'isDeleted': isDeleted,
     };
@@ -85,6 +89,7 @@ class Reel {
     String? caption,
     List<String>? likes,
     int? commentCount,
+    int? shareCount,
     Timestamp? createdAt,
     bool? isDeleted,
   }) {
@@ -97,6 +102,7 @@ class Reel {
       caption: caption ?? this.caption,
       likes: likes ?? this.likes,
       commentCount: commentCount ?? this.commentCount,
+      shareCount: shareCount ?? this.shareCount,
       createdAt: createdAt ?? this.createdAt,
       isDeleted: isDeleted ?? this.isDeleted,
     );

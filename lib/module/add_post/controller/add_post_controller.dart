@@ -342,6 +342,7 @@ class AddPostController extends GetxController {
           caption: captionController.text.trim(),
           likes: [],
           commentCount: 0,
+          shareCount: 0,
           createdAt: Timestamp.now(),
           isDeleted: false,
         );
