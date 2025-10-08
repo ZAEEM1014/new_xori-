@@ -187,10 +187,21 @@ class SettingsScreen extends StatelessWidget {
   Widget _arrowIcon() => Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.yellow, width: 2),
+          gradient: AppColors.appGradient, // Apply gradient background
+          border: Border.all(
+            color: Colors.transparent, // Remove solid border
+            width: 2,
+          ),
         ),
         padding: const EdgeInsets.all(4),
-        child: Icon(Icons.arrow_forward_ios_rounded,
-            size: 16, color: AppColors.yellow),
+        child: ShaderMask(
+          shaderCallback: (bounds) =>
+              AppColors.appGradient.createShader(bounds),
+          child: const Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 16,
+            color: Colors.white, // Base color (will be replaced by gradient)
+          ),
+        ),
       );
 }

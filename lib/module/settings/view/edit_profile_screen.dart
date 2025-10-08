@@ -24,9 +24,10 @@ class EditProfileScreen extends GetView<EditProfileController> {
                 if (controller.isLoading.value) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                
+
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                   child: Column(
                     children: [
                       // Profile Image Section
@@ -48,34 +49,42 @@ class EditProfileScreen extends GetView<EditProfileController> {
                                 ),
                                 padding: const EdgeInsets.all(3),
                                 child: Obx(() => ClipOval(
-                                      child: controller.profileImage.value != null
+                                      child: controller.profileImage.value !=
+                                              null
                                           ? Image.file(
                                               controller.profileImage.value!,
                                               width: 110,
                                               height: 110,
                                               fit: BoxFit.cover,
                                             )
-                                          : controller.profileImageUrl.value.isNotEmpty
+                                          : controller.profileImageUrl.value
+                                                  .isNotEmpty
                                               ? Image.network(
-                                                  controller.profileImageUrl.value,
+                                                  controller
+                                                      .profileImageUrl.value,
                                                   width: 110,
                                                   height: 110,
                                                   fit: BoxFit.cover,
-                                                  errorBuilder: (context, error, stackTrace) => Container(
+                                                  errorBuilder: (context, error,
+                                                          stackTrace) =>
+                                                      Container(
                                                     width: 110,
                                                     height: 110,
-                                                    color: AppColors.inputBackground,
+                                                    color: AppColors
+                                                        .inputBackground,
                                                     child: Icon(
                                                       Icons.person,
                                                       size: 50,
-                                                      color: AppColors.textLight,
+                                                      color:
+                                                          AppColors.textLight,
                                                     ),
                                                   ),
                                                 )
                                               : Container(
                                                   width: 110,
                                                   height: 110,
-                                                  color: AppColors.inputBackground,
+                                                  color:
+                                                      AppColors.inputBackground,
                                                   child: Icon(
                                                     Icons.person,
                                                     size: 50,
@@ -101,10 +110,16 @@ class EditProfileScreen extends GetView<EditProfileController> {
                                       shape: BoxShape.circle,
                                       color: Colors.white,
                                     ),
-                                    child: Icon(
-                                      Icons.add,
-                                      size: 20,
-                                      color: AppColors.primary,
+                                    child: ShaderMask(
+                                      shaderCallback: (bounds) => AppColors
+                                          .appGradient
+                                          .createShader(bounds),
+                                      child: const Icon(
+                                        Icons.add,
+                                        size: 20,
+                                        color: Colors
+                                            .white, // base color replaced by gradient
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -131,7 +146,7 @@ class EditProfileScreen extends GetView<EditProfileController> {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      
+
                       // Username Field
                       Container(
                         decoration: BoxDecoration(
@@ -144,12 +159,13 @@ class EditProfileScreen extends GetView<EditProfileController> {
                           decoration: const InputDecoration(
                             hintText: 'Username',
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Email Field (Read-only)
                       Container(
                         decoration: BoxDecoration(
@@ -163,12 +179,13 @@ class EditProfileScreen extends GetView<EditProfileController> {
                           decoration: const InputDecoration(
                             hintText: 'Email',
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 16),
                           ),
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Personality Traits Section
                       Container(
                         width: double.infinity,
@@ -176,7 +193,8 @@ class EditProfileScreen extends GetView<EditProfileController> {
                         decoration: BoxDecoration(
                           color: Colors.blue[50],
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue[200]!),
+                          border: Border.all(
+                              color: const Color.fromARGB(255, 255, 255, 255)!),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,15 +212,20 @@ class EditProfileScreen extends GetView<EditProfileController> {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: controller.allTraits.map((trait) {
-                                    final isSelected = controller.selectedTraits.contains(trait);
+                                    final isSelected = controller.selectedTraits
+                                        .contains(trait);
                                     return ChoiceChip(
                                       label: Text(trait),
                                       selected: isSelected,
-                                      onSelected: (_) => controller.toggleTrait(trait),
-                                      selectedColor: AppColors.appGradient.colors.first,
+                                      onSelected: (_) =>
+                                          controller.toggleTrait(trait),
+                                      selectedColor:
+                                          AppColors.appGradient.colors.first,
                                       backgroundColor: Colors.grey[200],
                                       labelStyle: TextStyle(
-                                        color: isSelected ? Colors.white : Colors.black,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.black,
                                       ),
                                       shape: const StadiumBorder(),
                                       side: BorderSide(
@@ -217,7 +240,7 @@ class EditProfileScreen extends GetView<EditProfileController> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Error and Success Messages
                       Obx(() {
                         if (controller.hasError) {
@@ -239,7 +262,7 @@ class EditProfileScreen extends GetView<EditProfileController> {
                         }
                         return const SizedBox.shrink();
                       }),
-                      
+
                       // Save Button
                       Obx(() => GradientButton(
                             text: 'Save Changes',

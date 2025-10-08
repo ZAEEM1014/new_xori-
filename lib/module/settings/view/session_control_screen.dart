@@ -21,8 +21,10 @@ class SessionControlScreen extends GetView<SessionControlController> {
             ),
             Expanded(
               child: Obx(() => ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    itemCount: controller.sessions.length + 1, // +1 for logout all button
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
+                    itemCount: controller.sessions.length +
+                        1, // +1 for logout all button
                     itemBuilder: (context, index) {
                       if (index == controller.sessions.length) {
                         // Logout all devices button
@@ -56,7 +58,9 @@ class SessionControlScreen extends GetView<SessionControlController> {
                                   Text(
                                     session.status,
                                     style: TextStyle(
-                                      color: session.isActive ? AppColors.textDark : Colors.grey[600],
+                                      color: session.isActive
+                                          ? AppColors.textDark
+                                          : Colors.grey[600],
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -74,7 +78,8 @@ class SessionControlScreen extends GetView<SessionControlController> {
                             ),
                             if (!session.isActive)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
                                   color: AppColors.yellow,
                                   borderRadius: BorderRadius.circular(16),
@@ -93,7 +98,8 @@ class SessionControlScreen extends GetView<SessionControlController> {
                               )
                             else
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
                                   color: Colors.green,
                                   borderRadius: BorderRadius.circular(16),

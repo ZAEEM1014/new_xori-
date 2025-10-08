@@ -9,6 +9,8 @@ class StoryModel {
   final DateTime postedAt;
   final DateTime expiresAt;
   final List<String> viewedBy;
+  final List<String> likes;
+  final int commentCount;
 
   StoryModel({
     required this.storyId,
@@ -19,6 +21,8 @@ class StoryModel {
     required this.postedAt,
     required this.expiresAt,
     required this.viewedBy,
+    this.likes = const [],
+    this.commentCount = 0,
   });
 
   factory StoryModel.fromMap(Map<String, dynamic> map, String docId) {
@@ -31,6 +35,8 @@ class StoryModel {
       postedAt: (map['postedAt'] as Timestamp).toDate(),
       expiresAt: (map['expiresAt'] as Timestamp).toDate(),
       viewedBy: List<String>.from(map['viewedBy'] ?? []),
+      likes: List<String>.from(map['likes'] ?? []),
+      commentCount: map['commentCount'] ?? 0,
     );
   }
 
@@ -43,6 +49,8 @@ class StoryModel {
       'postedAt': Timestamp.fromDate(postedAt),
       'expiresAt': Timestamp.fromDate(expiresAt),
       'viewedBy': viewedBy,
+      'likes': likes,
+      'commentCount': commentCount,
     };
   }
 }

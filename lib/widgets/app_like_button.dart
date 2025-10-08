@@ -59,6 +59,24 @@ class AppLikeButton extends StatelessWidget {
       likeCountPadding: const EdgeInsets.only(left: 6),
       countBuilder: (int? count, bool liked, String text) {
         if (!showCount) return const SizedBox.shrink();
+        
+        // Use gradient text for positive like counts, otherwise use specified color
+        if ((count ?? 0) > 0) {
+          return ShaderMask(
+            shaderCallback: (Rect bounds) {
+              return AppColors.appGradient.createShader(bounds);
+            },
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          );
+        }
+        
         return Text(
           text,
           style: TextStyle(

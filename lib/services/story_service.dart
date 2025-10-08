@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:get/get.dart';
 import 'package:rxdart/rxdart.dart';
 import '../models/story_model.dart';
+import '../models/story_comment_model.dart';
 
 class StoryService extends GetxService {
   Future<StoryModel?> fetchStoryById(String storyId) async {
@@ -174,5 +175,111 @@ class StoryService extends GetxService {
         .map((storiesSnap) => storiesSnap.docs
             .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
             .toList());
+  }
+
+  // Like functionality for stories
+  Future<void> likeStory(String storyId, String userId) async {
+    try {
+      await _firestore.collection('stories').doc(storyId).update({
+        'likes': FieldValue.arrayUnion([userId])
+      });
+    } catch (e) {
+      throw Exception('Failed to like story: ${e.toString()}');
+    }
+  }
+
+  Future<void> unlikeStory(String storyId, String userId) async {
+    try {
+      await _firestore.collection('stories').doc(storyId).update({
+        'likes': FieldValue.arrayRemove([userId])
+      });
+    } catch (e) {
+      throw Exception('Failed to unlike story: ${e.toString()}');
+    }
+  }
+
+  // Get like count for a story
+  Stream<int> getLikeCount(String storyId) {
+    return _firestore
+        .collection('stories')
+        .doc(storyId)
+        .snapshots()
+        .map((doc) {
+      if (doc.exists && doc.data() != null) {
+        final likes = doc.data()!['likes'];
+        if (likes is List) {
+          return likes.length;
+        }
+      }
+      return 0;
+    });
+  }
+
+  // Check if user has liked the story
+  Stream<bool> isStoryLikedByUser(String storyId, String userId) {
+    return _firestore
+        .collection('stories')
+        .doc(storyId)
+        .snapshots()
+        .map((doc) {
+      if (doc.exists && doc.data() != null) {
+        final likes = doc.data()!['likes'];
+        if (likes is List) {
+          return likes.contains(userId);
+        }
+      }
+      return false;
+    });
+  }
+
+  // Comment functionality for stories
+  Future<void> addComment(String storyId, StoryComment comment) async {
+    try {
+      // Add comment to subcollection
+      await _firestore
+          .collection('stories')
+          .doc(storyId)
+          .collection('comments')
+          .add(comment.toMap());
+
+      // Update comment count in story document
+      await _firestore.collection('stories').doc(storyId).update({
+        'commentCount': FieldValue.increment(1)
+      });
+    } catch (e) {
+      throw Exception('Failed to add comment: ${e.toString()}');
+    }
+  }
+
+  // Get comments for a story
+  Stream<List<StoryComment>> streamComments(String storyId) {
+    return _firestore
+        .collection('stories')
+        .doc(storyId)
+        .collection('comments')
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => StoryComment.fromDoc(doc))
+            .toList());
+  }
+
+  // Get comment count for a story
+  Stream<int> getCommentCount(String storyId) {
+    return _firestore
+        .collection('stories')
+        .doc(storyId)
+        .snapshots()
+        .map((doc) {
+      if (doc.exists && doc.data() != null) {
+        return doc.data()!['commentCount'] ?? 0;
+      }
+      return 0;
+    });
+  }
+
+  // Get current user ID
+  String? getCurrentUserId() {
+    return _auth.currentUser?.uid;
   }
 }

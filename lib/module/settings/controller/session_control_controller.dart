@@ -43,11 +43,11 @@ class SessionControlController extends GetxController {
   Future<void> logOutDevice(SessionDevice device) async {
     try {
       isLoading.value = true;
-      
+
       // In a real app, you would call your backend API to invalidate the session
       // For now, we'll just remove it from the local list
       sessions.remove(device);
-      
+
       Get.snackbar(
         'Success',
         'Device logged out successfully',
@@ -67,11 +67,11 @@ class SessionControlController extends GetxController {
   Future<void> logOutAllDevices() async {
     try {
       isLoading.value = true;
-      
+
       // In a real app, you would call your backend API to invalidate all sessions
       // For now, we'll clear the list except for the current device
       sessions.removeWhere((device) => !device.isActive);
-      
+
       Get.snackbar(
         'Success',
         'All other devices logged out successfully',

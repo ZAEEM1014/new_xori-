@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../controller/story_controller.dart';
 import '../../../constants/app_colors.dart';
 import '../../../widgets/app_like_button.dart';
+import '../../../widgets/story_comment_bottom_sheet.dart';
 
 class StoryViewScreen extends StatefulWidget {
   @override
@@ -15,6 +16,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   late PageController _pageController;
   late StoryController controller;
   late List<AnimationController> _progressControllers;
+  late TextEditingController _commentController;
   bool _isHolding = false;
   static const storyDuration = Duration(seconds: 8);
 
@@ -22,6 +24,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
   void initState() {
     super.initState();
     controller = Get.find<StoryController>();
+    _commentController = TextEditingController();
     _pageController =
         PageController(initialPage: controller.currentIndex.value);
     _initProgressControllers();
@@ -98,6 +101,7 @@ class _StoryViewScreenState extends State<StoryViewScreen>
       c.dispose();
     }
     _pageController.dispose();
+    _commentController.dispose();
     // Restore system bar for other screens
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -268,31 +272,70 @@ class _StoryViewScreenState extends State<StoryViewScreen>
                     child: Row(
                       children: [
                         Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(25),
-                              border: Border.all(color: Colors.white38),
-                            ),
-                            child: const TextField(
-                              style: TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                border: InputBorder.none,
-                                hintText: "Type a Message",
-                                hintStyle: TextStyle(color: Colors.white70),
+                          child: GestureDetector(
+                            onTap: () {
+                              // Show comment bottom sheet
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => StoryCommentBottomSheet(
+                                  storyId: story.storyId,
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(25),
+                                border: Border.all(color: Colors.white38),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Text(
+                                    "Type a Message",
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                  const Spacer(),
+                                  Obx(() {
+                                    final commentCount = controller.currentStoryCommentCount;
+                                    if (commentCount > 0) {
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          gradient: AppColors.appGradient,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          '$commentCount',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  }),
+                                ],
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 10),
-                        // Like button with burst effect
-                        AppLikeButton(
-                          isLiked: false, // TODO: Bind to real like state
-                          likeCount: 0, // TODO: Bind to real like count
-                          onTap: (liked) {}, // TODO: Implement like logic
+                        // Like button with gradient count color
+                        Obx(() => AppLikeButton(
+                          isLiked: controller.isCurrentStoryLiked,
+                          likeCount: controller.currentStoryLikeCount,
+                          onTap: (liked) {
+                            controller.toggleLike(story.storyId);
+                          },
                           size: 32,
-                        ),
+                          borderColor: Colors.white,
+                          likeCountColor: Colors.white,
+                        )),
                       ],
                     ),
                   ),

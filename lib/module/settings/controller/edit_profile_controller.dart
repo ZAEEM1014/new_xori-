@@ -64,14 +64,17 @@ class EditProfileController extends GetxController {
           usernameController.text = userData.username;
           emailController.text = userData.email;
           profileImageUrl.value = userData.profileImageUrl ?? '';
-          
+
           // Load personality traits directly from user data
           if (userData.personalityTraits.isNotEmpty) {
-            selectedTraits.value = userData.personalityTraits.where((trait) => allTraits.contains(trait)).toList();
+            selectedTraits.value = userData.personalityTraits
+                .where((trait) => allTraits.contains(trait))
+                .toList();
           } else if (userData.bio.isNotEmpty) {
             // Fallback: parse bio to get personality traits for backward compatibility
             final traits = userData.bio.split(' | ');
-            selectedTraits.value = traits.where((trait) => allTraits.contains(trait)).toList();
+            selectedTraits.value =
+                traits.where((trait) => allTraits.contains(trait)).toList();
           }
         }
       }
@@ -166,7 +169,7 @@ class EditProfileController extends GetxController {
 
       // Get original user data to preserve creation date
       final originalUser = await _firestoreService.getUser(currentUser.uid);
-      
+
       // Create updated user model
       final updatedUser = UserModel(
         uid: currentUser.uid,
@@ -182,7 +185,7 @@ class EditProfileController extends GetxController {
       await _firestoreService.saveUser(updatedUser);
 
       successMessage.value = 'Profile updated successfully!';
-      
+
       // Clear the selected image since it's now uploaded
       profileImage.value = null;
       profileImageUrl.value = updatedImageUrl;
@@ -191,7 +194,6 @@ class EditProfileController extends GetxController {
       Future.delayed(const Duration(seconds: 2), () {
         Get.back();
       });
-
     } catch (e) {
       errorMessage.value = 'Failed to update profile: $e';
     } finally {
