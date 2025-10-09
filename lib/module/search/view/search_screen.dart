@@ -243,22 +243,23 @@ class SearchScreen extends GetView<SearchController> {
           children: [
             CircleAvatar(
               radius: 22,
-              backgroundImage:
-                  user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
-                      ? NetworkImage(user.profileImageUrl!)
-                      : null,
-              child: user.profileImageUrl == null || user.profileImageUrl!.isEmpty
-                  ? Text(
-                      user.username.isNotEmpty
-                          ? user.username[0].toUpperCase()
-                          : 'U',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    )
+              backgroundImage: user.profileImageUrl != null &&
+                      user.profileImageUrl!.isNotEmpty
+                  ? NetworkImage(user.profileImageUrl!)
                   : null,
+              child:
+                  user.profileImageUrl == null || user.profileImageUrl!.isEmpty
+                      ? Text(
+                          user.username.isNotEmpty
+                              ? user.username[0].toUpperCase()
+                              : 'U',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
               backgroundColor: AppColors.primary,
             ),
             const SizedBox(width: 12),

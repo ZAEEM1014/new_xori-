@@ -310,4 +310,41 @@ class HomeController extends GetxController {
       dev.log('❌ Error handling story tap: $e', name: 'StoryController');
     }
   }
+
+  // Clear all user data when logging out
+  Future<void> clearUserData() async {
+    try {
+      // Cancel all active streams
+      _postsStreamSubscription?.cancel();
+      _currentUserStoriesSubscription?.cancel();
+
+      // Clear all observables
+      topBar.clear();
+      statuses.clear();
+      currentUserStories.clear();
+      followingUsersStories.clear();
+      posts.clear();
+
+      // Reset loading states
+      isLoadingStories.value = false;
+      isLoading.value = false;
+
+      // Clear error messages
+      storiesErrorMessage.value = '';
+      errorMessage.value = '';
+
+      print('[DEBUG] HomeController: User data cleared successfully');
+    } catch (e) {
+      print('[DEBUG] HomeController: Error clearing user data: $e');
+    }
+  }
+
+  // Reinitialize with new user data
+  Future<void> reinitializeForNewUser() async {
+    await clearUserData();
+    _fetchAndSetCurrentUserTopBar();
+    _startPostsStream();
+    _initializeStories();
+    _debugCurrentUserFollowCollections();
+  }
 }

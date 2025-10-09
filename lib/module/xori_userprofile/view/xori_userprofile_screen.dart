@@ -21,7 +21,10 @@ class _FollowButton extends StatelessWidget {
   final FollowService _followService = FollowService();
 
   _FollowButton(
-      {required this.currentUserId, required this.targetUser, this.onFollowToggled, Key? key})
+      {required this.currentUserId,
+      required this.targetUser,
+      this.onFollowToggled,
+      Key? key})
       : super(key: key);
 
   @override
@@ -154,22 +157,22 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 30),
                   child: Obx(() => Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _StatItem(
-                        title: controller.postsCount.value.toString(),
-                        subtitle: "Posts",
-                      ),
-                      _StatItem(
-                        title: controller.followersCount.value.toString(),
-                        subtitle: "Followers",
-                      ),
-                      _StatItem(
-                        title: controller.followingCount.value.toString(),
-                        subtitle: "Following",
-                      ),
-                    ],
-                  )),
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _StatItem(
+                            title: controller.postsCount.value.toString(),
+                            subtitle: "Posts",
+                          ),
+                          _StatItem(
+                            title: controller.followersCount.value.toString(),
+                            subtitle: "Followers",
+                          ),
+                          _StatItem(
+                            title: controller.followingCount.value.toString(),
+                            subtitle: "Following",
+                          ),
+                        ],
+                      )),
                 ),
 
                 const SizedBox(height: 20),
@@ -401,7 +404,16 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
             ),
           );
         }
-        final heights = [200.0, 180.0, 220.0, 160.0, 140.0, 240.0, 180.0, 200.0];
+        final heights = [
+          200.0,
+          180.0,
+          220.0,
+          160.0,
+          140.0,
+          240.0,
+          180.0,
+          200.0
+        ];
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: MasonryGridView.count(

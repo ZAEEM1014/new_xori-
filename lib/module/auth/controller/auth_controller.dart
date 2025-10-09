@@ -6,6 +6,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:xori/models/user_model.dart';
 import 'package:xori/services/auth_service.dart';
 import 'package:xori/services/firestore_service.dart';
+import '../../profile/controller/profile_controller.dart';
+import '../../home/controller/home_controller.dart';
+import '../../search/controller/search_controller.dart' as XoriSearch;
 
 class AuthController extends GetxController {
   // Services
@@ -231,7 +234,15 @@ class AuthController extends GetxController {
     }
 
     try {
+      // Check if this is a different user than before
+      final bool isDifferentUser = this.user.value?.uid != user.uid;
+
       await _loadUserData(user.uid);
+
+      // If it's a different user, reinitialize controllers
+      if (isDifferentUser && this.user.value != null) {
+        await _reinitializeControllersForNewUser();
+      }
     } catch (e) {
       _setError('Error checking authentication: ${e.toString()}');
     }
@@ -436,6 +447,10 @@ class AuthController extends GetxController {
       if (credential != null && error == null) {
         _setSuccess('Login successful! Welcome back.');
         _clearLoginForm();
+
+        // Reinitialize controllers with new user data
+        await _reinitializeControllersForNewUser();
+
         // Navigate to navwrapper on successful login
         Get.offAllNamed('/navwrapper');
       } else {
@@ -459,14 +474,70 @@ class AuthController extends GetxController {
     _clearMessages();
 
     try {
+      // Clear all cached user data
+      await _clearUserCache();
+
+      // Sign out from Firebase
       await _authService.signOut();
       user.value = null;
       _clearAllForms();
+
+      // Navigate to login screen
+      Get.offAllNamed('/login');
       _setSuccess('Signed out successfully');
     } catch (e) {
       _setError('Sign out error: ${e.toString()}');
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  // Clear all cached user data and dispose controllers
+  Future<void> _clearUserCache() async {
+    try {
+      // Clear ProfileController data if it exists
+      if (Get.isRegistered<ProfileController>()) {
+        final profileController = Get.find<ProfileController>();
+        await profileController.clearUserData();
+      }
+
+      // Clear HomeController data if it exists
+      if (Get.isRegistered<HomeController>()) {
+        final homeController = Get.find<HomeController>();
+        await homeController.clearUserData();
+      }
+
+      // Clear SearchController data if it exists
+      if (Get.isRegistered<XoriSearch.SearchController>()) {
+        final searchController = Get.find<XoriSearch.SearchController>();
+        searchController.clearSearch();
+      }
+
+      // Clear any other user-specific cached data
+      print('[DEBUG] AuthController: User cache cleared successfully');
+    } catch (e) {
+      print('[DEBUG] AuthController: Error clearing user cache: $e');
+    }
+  }
+
+  // Reinitialize controllers for new user login
+  Future<void> _reinitializeControllersForNewUser() async {
+    try {
+      // Reinitialize ProfileController with new user data
+      if (Get.isRegistered<ProfileController>()) {
+        final profileController = Get.find<ProfileController>();
+        await profileController.reinitializeForNewUser();
+      }
+
+      // Reinitialize HomeController with new user data
+      if (Get.isRegistered<HomeController>()) {
+        final homeController = Get.find<HomeController>();
+        await homeController.reinitializeForNewUser();
+      }
+
+      print('[DEBUG] AuthController: Controllers reinitialized for new user');
+    } catch (e) {
+      print('[DEBUG] AuthController: Error reinitializing controllers: $e');
     }
   }
 

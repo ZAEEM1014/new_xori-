@@ -162,4 +162,37 @@ class ProfileController extends GetxController {
       _startPostsStream(currentUser.uid);
     }
   }
+
+  // Clear all user data when logging out
+  Future<void> clearUserData() async {
+    try {
+      // Cancel all active streams
+      _userStreamSubscription?.cancel();
+      _postsStreamSubscription?.cancel();
+
+      // Clear all observables
+      user.value = UserModel.empty;
+      name.value = "";
+      bio.value = "";
+      profileImageUrl.value = "";
+      isLoading.value = true;
+      isLoadingPosts.value = true;
+      posts.value = 0;
+      followers.value = 0;
+      following.value = 0;
+      userPosts.clear();
+      userReels.clear();
+      activeTab.value = 0;
+
+      print('[DEBUG] ProfileController: User data cleared successfully');
+    } catch (e) {
+      print('[DEBUG] ProfileController: Error clearing user data: $e');
+    }
+  }
+
+  // Reinitialize with new user data
+  Future<void> reinitializeForNewUser() async {
+    await clearUserData();
+    _initializeStreams();
+  }
 }

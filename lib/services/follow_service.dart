@@ -74,25 +74,24 @@ class FollowService {
       if (!followingDoc.exists) {
         // Not following: follow
         final now = Timestamp.now();
-        
+
         // Use batch write for atomic operations
         final batch = _firestore.batch();
-        
+
         // Add targetUser to currentUser's following
         batch.set(
-          _firestore
-              .collection(usersCollection)
-              .doc(currentUserId)
-              .collection(followingSub)
-              .doc(targetUser.userId),
-          {
-            'userId': targetUser.userId,
-            'username': targetUser.username,
-            'userPhotoUrl': targetUser.userPhotoUrl,
-            'followedAt': now,
-          }
-        );
-        
+            _firestore
+                .collection(usersCollection)
+                .doc(currentUserId)
+                .collection(followingSub)
+                .doc(targetUser.userId),
+            {
+              'userId': targetUser.userId,
+              'username': targetUser.username,
+              'userPhotoUrl': targetUser.userPhotoUrl,
+              'followedAt': now,
+            });
+
         // Fetch current user's username and profileImageUrl
         final currentUserDoc = await _firestore
             .collection(usersCollection)
@@ -101,60 +100,51 @@ class FollowService {
         final currentUserData = currentUserDoc.data() ?? {};
         final currentUsername = currentUserData['username'] ?? '';
         final currentUserPhoto = currentUserData['profileImageUrl'] ?? '';
-        
+
         // Add currentUser to targetUser's followers
         batch.set(
-          _firestore
-              .collection(usersCollection)
-              .doc(targetUser.userId)
-              .collection(followersSub)
-              .doc(currentUserId),
-          {
-            'userId': currentUserId,
-            'username': currentUsername,
-            'userPhotoUrl': currentUserPhoto,
-            'followedAt': now,
-          }
-        );
-        
+            _firestore
+                .collection(usersCollection)
+                .doc(targetUser.userId)
+                .collection(followersSub)
+                .doc(currentUserId),
+            {
+              'userId': currentUserId,
+              'username': currentUsername,
+              'userPhotoUrl': currentUserPhoto,
+              'followedAt': now,
+            });
+
         // Update follower counts
+        batch
+            .update(_firestore.collection(usersCollection).doc(currentUserId), {
+          'followingCount': FieldValue.increment(1),
+        });
+
         batch.update(
-          _firestore.collection(usersCollection).doc(currentUserId),
-          {
-            'followingCount': FieldValue.increment(1),
-          }
-        );
-        
-        batch.update(
-          _firestore.collection(usersCollection).doc(targetUser.userId),
-          {
-            'followersCount': FieldValue.increment(1),
-          }
-        );
-        
+            _firestore.collection(usersCollection).doc(targetUser.userId), {
+          'followersCount': FieldValue.increment(1),
+        });
+
         // Commit batch
         await batch.commit();
       } else {
         // Already following: unfollow
         final batch = _firestore.batch();
-        
+
         // Remove from collections
-        batch.delete(
-          _firestore
-              .collection(usersCollection)
-              .doc(currentUserId)
-              .collection(followingSub)
-              .doc(targetUser.userId)
-        );
-        
-        batch.delete(
-          _firestore
-              .collection(usersCollection)
-              .doc(targetUser.userId)
-              .collection(followersSub)
-              .doc(currentUserId)
-        );
-        
+        batch.delete(_firestore
+            .collection(usersCollection)
+            .doc(currentUserId)
+            .collection(followingSub)
+            .doc(targetUser.userId));
+
+        batch.delete(_firestore
+            .collection(usersCollection)
+            .doc(targetUser.userId)
+            .collection(followersSub)
+            .doc(currentUserId));
+
         // Update follower counts (ensure they don't go negative)
         final currentUserDoc = await _firestore
             .collection(usersCollection)
@@ -164,32 +154,28 @@ class FollowService {
             .collection(usersCollection)
             .doc(targetUser.userId)
             .get();
-            
+
         final currentUserData = currentUserDoc.data() ?? {};
         final targetUserData = targetUserDoc.data() ?? {};
-        
+
         final currentFollowingCount = currentUserData['followingCount'] ?? 0;
         final targetFollowersCount = targetUserData['followersCount'] ?? 0;
-        
+
         // Only decrement if count is greater than 0
         if (currentFollowingCount > 0) {
           batch.update(
-            _firestore.collection(usersCollection).doc(currentUserId),
-            {
-              'followingCount': FieldValue.increment(-1),
-            }
-          );
+              _firestore.collection(usersCollection).doc(currentUserId), {
+            'followingCount': FieldValue.increment(-1),
+          });
         }
-        
+
         if (targetFollowersCount > 0) {
           batch.update(
-            _firestore.collection(usersCollection).doc(targetUser.userId),
-            {
-              'followersCount': FieldValue.increment(-1),
-            }
-          );
+              _firestore.collection(usersCollection).doc(targetUser.userId), {
+            'followersCount': FieldValue.increment(-1),
+          });
         }
-        
+
         // Commit batch
         await batch.commit();
       }

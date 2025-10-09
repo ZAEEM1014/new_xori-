@@ -16,7 +16,7 @@ class XoriUserProfileController extends GetxController {
   var isLoading = true.obs;
   var isFollowing = false.obs;
   var activeTab = 0.obs; // 0 = Posts, 1 = Tagged
-  
+
   // Counts
   var followersCount = 0.obs;
   var followingCount = 0.obs;
@@ -26,7 +26,7 @@ class XoriUserProfileController extends GetxController {
 
   // Stream of posts for this user (from PostService)
   Stream<List<Post>> get userPostsStream => PostService().streamUserPosts(uid);
-  
+
   // Stream of reels for this user
   Stream<List<Post>> get userReelsStream => PostService().streamUserReels(uid);
 
