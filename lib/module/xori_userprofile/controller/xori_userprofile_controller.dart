@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import '../../../models/user_model.dart';
 
-import '../../../services/firestore_service.dart';
+import '../../../services/user_service.dart';
 import '../../../services/post_service.dart';
 import '../../../services/follow_service.dart';
 import '../../../models/post_model.dart';

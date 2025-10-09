@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:xori/models/user_model.dart';
 import 'package:xori/services/auth_service.dart';
-import 'package:xori/services/firestore_service.dart';
+import 'package:xori/services/user_service.dart';
 import '../../profile/controller/profile_controller.dart';
 import '../../home/controller/home_controller.dart';
 import '../../search/controller/search_controller.dart' as XoriSearch;

@@ -8,7 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../services/cloudinary_service.dart';
 import '../../../services/post_service.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/firestore_service.dart';
+import '../../../services/user_service.dart';
 import '../../../models/post_model.dart';
 
 class AddPostController extends GetxController {

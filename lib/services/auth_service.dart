@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:xori/services/cloudinary_service.dart';
 import 'package:get/get.dart';
 import 'package:xori/models/user_model.dart';
-import 'package:xori/services/firestore_service.dart';
+import 'package:xori/services/user_service.dart';
 
 class AuthService {
   // Change password (requires re-authentication)

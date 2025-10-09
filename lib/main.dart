@@ -6,7 +6,7 @@ import 'package:xori/module/auth/controller/auth_controller.dart';
 import 'package:xori/module/home/controller/home_controller.dart';
 import 'package:xori/module/profile/controller/profile_controller.dart';
 import 'package:xori/services/auth_service.dart';
-import 'package:xori/services/firestore_service.dart';
+import 'package:xori/services/user_service.dart';
 import 'package:xori/services/cloudinary_service.dart';
 import 'package:xori/services/story_service.dart';
 import 'package:xori/services/message_service.dart';

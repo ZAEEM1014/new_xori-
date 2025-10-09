@@ -5,7 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../../../services/reel_service.dart';
 import '../../../services/cloudinary_service.dart';
 import '../../../services/auth_service.dart';
-import '../../../services/firestore_service.dart';
+import '../../../services/user_service.dart';
 import '../../../models/reel_model.dart';
 import '../../../models/reel_comment_model.dart';
 

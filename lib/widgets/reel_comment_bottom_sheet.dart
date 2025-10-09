@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import '../constants/app_colors.dart';
 import '../models/reel_comment_model.dart';
 import '../services/reel_service.dart';
-import '../services/firestore_service.dart';
+import '../services/user_service.dart';
 import '../services/auth_service.dart';
 
 class ReelCommentBottomSheet extends StatefulWidget {

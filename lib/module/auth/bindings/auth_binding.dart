@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:xori/module/auth/controller/auth_controller.dart';
 import 'package:xori/services/auth_service.dart';
-import 'package:xori/services/firestore_service.dart';
+import 'package:xori/services/user_service.dart';
 import 'package:xori/services/storage_service.dart';
 
 class AuthBinding extends Bindings {

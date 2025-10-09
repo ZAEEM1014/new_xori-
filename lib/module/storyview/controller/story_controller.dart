@@ -3,7 +3,7 @@ import 'package:xori/models/story_model.dart';
 import 'package:xori/models/story_comment_model.dart';
 import 'package:xori/services/story_service.dart';
 import 'package:xori/services/auth_service.dart';
-import 'package:xori/services/firestore_service.dart';
+import 'package:xori/services/user_service.dart';
 
 class StoryController extends GetxController {
   final StoryService _storyService = StoryService();

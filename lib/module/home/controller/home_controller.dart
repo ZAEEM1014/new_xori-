@@ -7,7 +7,7 @@ import 'package:xori/models/post_model.dart';
 import 'package:xori/models/story_model.dart';
 import 'dart:async';
 import 'dart:developer' as dev;
-import 'package:xori/services/firestore_service.dart';
+import 'package:xori/services/user_service.dart';
 import 'package:xori/constants/app_assets.dart';
 
 class HomeController extends GetxController {
