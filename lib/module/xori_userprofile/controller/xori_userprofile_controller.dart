@@ -1,15 +1,24 @@
 import 'package:get/get.dart';
 import '../../../models/user_model.dart';
+import 'dart:async';
 
 import '../../../services/user_service.dart';
 import '../../../services/post_service.dart';
+import '../../../services/reel_service.dart';
 import '../../../services/follow_service.dart';
 import '../../../models/post_model.dart';
+import '../../../models/reel_model.dart';
 
 class XoriUserProfileController extends GetxController {
   final String uid;
   final FirestoreService _firestoreService = FirestoreService();
   final FollowService _followService = FollowService();
+  final PostService _postService = PostService();
+  final ReelService _reelService = ReelService();
+
+  // Stream subscriptions
+  StreamSubscription<List<Post>>? _postsStreamSubscription;
+  StreamSubscription<List<Reel>>? _reelsStreamSubscription;
 
   // Observables
   var user = UserModel.empty.obs;
@@ -22,19 +31,32 @@ class XoriUserProfileController extends GetxController {
   var followingCount = 0.obs;
   var postsCount = 0.obs;
 
+  // User posts data
+  var userPosts = <Post>[].obs;
+  var userReels = <Reel>[].obs;
+
   XoriUserProfileController(this.uid);
 
   // Stream of posts for this user (from PostService)
-  Stream<List<Post>> get userPostsStream => PostService().streamUserPosts(uid);
+  Stream<List<Post>> get userPostsStream => _postService.streamUserPosts(uid);
 
-  // Stream of reels for this user
-  Stream<List<Post>> get userReelsStream => PostService().streamUserReels(uid);
+  // Stream of reels for this user (from ReelService)
+  Stream<List<Reel>> get userReelsStream => _reelService.streamUserReels(uid);
 
   @override
   void onInit() {
     super.onInit();
     _listenToUser();
     _loadCounts();
+    _startPostsStream();
+    _startReelsStream();
+  }
+
+  @override
+  void onClose() {
+    _postsStreamSubscription?.cancel();
+    _reelsStreamSubscription?.cancel();
+    super.onClose();
   }
 
   void _listenToUser() {
@@ -65,6 +87,47 @@ class XoriUserProfileController extends GetxController {
     }
   }
 
+  void _startPostsStream() {
+    _postsStreamSubscription = _postService.streamUserPosts(uid).listen(
+      (List<Post> allUserPosts) {
+        try {
+          // Only handle posts (not videos)
+          userPosts.clear();
+          userPosts.addAll(allUserPosts);
+
+          // Update posts count - this is the key fix!
+          postsCount.value = allUserPosts.length;
+          
+          print('[DEBUG] XoriUserProfileController: Updated posts count to ${postsCount.value}');
+        } catch (e) {
+          print('Error processing posts data: $e');
+        }
+      },
+      onError: (error) {
+        print('Error in posts stream: $error');
+      },
+    );
+  }
+
+  void _startReelsStream() {
+    _reelsStreamSubscription = _reelService.streamUserReels(uid).listen(
+      (List<Reel> userReelsList) {
+        try {
+          // Handle reels from reels collection
+          userReels.clear();
+          userReels.addAll(userReelsList);
+          
+          print('[DEBUG] XoriUserProfileController: Loaded ${userReels.length} reels');
+        } catch (e) {
+          print('Error processing reels data: $e');
+        }
+      },
+      onError: (error) {
+        print('Error in reels stream: $error');
+      },
+    );
+  }
+
   void toggleFollow() {
     isFollowing.value = !isFollowing.value;
     // Optionally update followers count in Firestore
@@ -77,16 +140,17 @@ class XoriUserProfileController extends GetxController {
   /// Load actual counts from Firestore
   Future<void> _loadCounts() async {
     try {
-      // Load counts concurrently
+      // Load follower counts from service
       final futures = await Future.wait([
         _followService.getFollowersCount(uid),
         _followService.getFollowingCount(uid),
-        _followService.getPostsCount(uid),
       ]);
 
       followersCount.value = futures[0];
       followingCount.value = futures[1];
-      postsCount.value = futures[2];
+      
+      // Posts count will be updated by the stream listener
+      print('[DEBUG] XoriUserProfileController: Loaded followers: ${followersCount.value}, following: ${followingCount.value}');
     } catch (e) {
       print('[DEBUG] XoriUserProfileController: Error loading counts: $e');
     }
@@ -95,5 +159,6 @@ class XoriUserProfileController extends GetxController {
   /// Refresh counts when needed
   Future<void> refreshCounts() async {
     await _loadCounts();
+    // Posts count is automatically updated by the stream
   }
 }

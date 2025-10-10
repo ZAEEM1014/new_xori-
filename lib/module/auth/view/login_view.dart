@@ -164,45 +164,58 @@ class LoginView extends GetView<AuthController> {
                   ],
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 105,
-                    height: 56,
-                    margin: const EdgeInsets.only(right: 16),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: IconButton(
-                      onPressed:
-                          null, // TODO: Implement Google sign-in if needed
-                      icon: Image.asset(
-                        'assets/icons/google.png',
-                        width: 24,
-                        height: 24,
+              Obx(() => Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 105,
+                        height: 56,
+                        margin: const EdgeInsets.only(right: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          onPressed: controller.isLoading.value
+                              ? null
+                              : () => controller.signInWithGoogle(),
+                          icon: controller.isLoading.value
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      AppColors.primary,
+                                    ),
+                                  ),
+                                )
+                              : Image.asset(
+                                  'assets/icons/google.png',
+                                  width: 24,
+                                  height: 24,
+                                ),
+                        ),
                       ),
-                    ),
-                  ),
-                  Container(
-                    width: 105,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: IconButton(
-                        onPressed:
-                            null, // TODO: Implement Apple sign-in if needed
-                        icon: SvgPicture.asset(
-                          AppAssets.appleIcon, // make sure it's an .svg file
-                          width: 24,
-                          height: 24,
-                        )),
-                  ),
-                ],
-              ),
+                      Container(
+                        width: 105,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                            onPressed:
+                                null, // TODO: Implement Apple sign-in if needed
+                            icon: SvgPicture.asset(
+                              AppAssets
+                                  .appleIcon, // make sure it's an .svg file
+                              width: 24,
+                              height: 24,
+                            )),
+                      ),
+                    ],
+                  )),
               const SizedBox(height: 20),
             ],
           ),

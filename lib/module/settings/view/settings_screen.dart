@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:xori/constants/app_colors.dart';
+import 'package:xori/widgets/custom_app_bar.dart';
 import '../../profile/controller/profile_controller.dart';
-import '../../../widgets/custom_app_bar.dart';
-import '../../../constants/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../routes/app_routes.dart';
+import '../../../services/auth_service.dart';
+import '../../../widgets/gradient_circle_icon.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -12,51 +14,71 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
-      appBar: const CustomAppBar(title: 'Settings'),
+      backgroundColor: Colors.white,
+      appBar: CustomAppBar(
+        title: 'Privacy Policy',
+        onBack: () => Navigator.of(context).maybePop(),
+      ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
+          const SizedBox(height: 8),
           _sectionTitle('Account'),
-          _accountCard(context),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          _accountSection(context),
+          const SizedBox(height: 24),
           _sectionTitle('Security'),
-          _securityCard(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          _securitySection(),
+          const SizedBox(height: 24),
           _sectionTitle('Appearance'),
-          _appearanceCard(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          _appearanceSection(),
+          const SizedBox(height: 24),
           _sectionTitle('Legal & Support'),
-          _legalSupportCard(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          _legalSupportSection(),
+          const SizedBox(height: 24),
           _sectionTitle('Logout'),
-          _logoutCard(),
+          const SizedBox(height: 8),
+          _logoutSection(context),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
   Widget _sectionTitle(String title) => Padding(
-        padding: const EdgeInsets.only(left: 8, bottom: 8, top: 8),
+        padding: const EdgeInsets.only(left: 0, bottom: 8),
         child: Text(
           title,
           style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
             color: AppColors.textDark,
           ),
         ),
       );
 
-  Widget _accountCard(BuildContext context) {
+  Widget _accountSection(BuildContext context) {
     final profileController = Get.find<ProfileController>();
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 0,
-      color: AppColors.white,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           Obx(() => ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 leading: CircleAvatar(
                   radius: 22,
                   backgroundImage: profileController
@@ -69,17 +91,43 @@ class SettingsScreen extends StatelessWidget {
                   profileController.name.value.isNotEmpty
                       ? profileController.name.value
                       : 'Username',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
+                    color: Colors.black,
+                  ),
                 ),
-                subtitle: const Text('Edit profile, picture, bio'),
-                trailing: _arrowIcon(),
+                subtitle: const Text(
+                  'Edit profile, picture, bio',
+                  style: TextStyle(
+                    color: Color(0xFF8E8E93),
+                    fontSize: 13,
+                  ),
+                ),
+                trailing: const GradientCircleIcon(
+                    icon: Icons.arrow_forward_ios, size: 24, iconSize: 12),
                 onTap: () => Get.toNamed(AppRoutes.editProfile),
               )),
-          const Divider(height: 1, color: AppColors.divider),
+          Container(
+            height: 0.5,
+            margin: const EdgeInsets.only(left: 60),
+            color: const Color(0xFFE5E5E5),
+          ),
           ListTile(
-            leading: Icon(Icons.lock_outline, color: AppColors.textLight),
-            title: const Text('Change Password'),
-            trailing: _arrowIcon(),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            leading: const Icon(Icons.lock_outline,
+                color: Color(0xFF8E8E93), size: 24),
+            title: const Text(
+              'Change Password',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: Colors.black,
+              ),
+            ),
+            trailing: const GradientCircleIcon(
+                icon: Icons.arrow_forward_ios, size: 24, iconSize: 12),
             onTap: () {
               Get.toNamed('/changePassword');
             },
@@ -89,119 +137,387 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _securityCard() => Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 0,
-        color: AppColors.white,
+  Widget _securitySection() => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Column(
           children: [
             SwitchListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               value: false,
               onChanged: (v) {},
-              secondary: Icon(Icons.security, color: AppColors.textLight),
-              title: const Text('Two-Factor Authentication'),
+              secondary: const Icon(Icons.security,
+                  color: Color(0xFF8E8E93), size: 24),
+              title: const Text(
+                'Two-Factor Authentication',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black,
+                ),
+              ),
+              activeColor: const Color(0xFF007AFF),
             ),
-            const Divider(height: 1, color: AppColors.divider),
+            Container(
+              height: 0.5,
+              margin: const EdgeInsets.only(left: 60),
+              color: const Color(0xFFE5E5E5),
+            ),
             ListTile(
-              leading: Icon(Icons.computer, color: AppColors.textLight),
-              title: const Text('Session Control'),
-              trailing: _arrowIcon(),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              leading: const Icon(Icons.computer,
+                  color: Color(0xFF8E8E93), size: 24),
+              title: const Text(
+                'Session Control',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black,
+                ),
+              ),
+              trailing: const GradientCircleIcon(
+                  icon: Icons.arrow_forward_ios, size: 24, iconSize: 12),
               onTap: () => Get.toNamed(AppRoutes.sessionControl),
             ),
           ],
         ),
       );
 
-  Widget _appearanceCard() => Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 0,
-        color: AppColors.white,
+  Widget _appearanceSection() => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: SwitchListTile(
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           value: false,
           onChanged: (v) {},
-          secondary: Icon(Icons.nightlight_round, color: AppColors.textLight),
-          title: const Text('Dark Mode'),
+          secondary: const Icon(Icons.nightlight_round,
+              color: Color(0xFF8E8E93), size: 24),
+          title: const Text(
+            'Dark Mode',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: Colors.black,
+            ),
+          ),
+          activeColor: const Color(0xFF007AFF),
         ),
       );
 
-  Widget _legalSupportCard() => Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 0,
-        color: AppColors.white,
+  Widget _legalSupportSection() => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Column(
           children: [
             ListTile(
-              leading:
-                  Icon(Icons.privacy_tip_outlined, color: AppColors.textLight),
-              title: const Text('Privacy Policy'),
-              trailing: _arrowIcon(),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              leading: const Icon(Icons.privacy_tip_outlined,
+                  color: Color(0xFF8E8E93), size: 24),
+              title: const Text(
+                'Privacy Policy',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black,
+                ),
+              ),
+              trailing: const GradientCircleIcon(
+                  icon: Icons.arrow_forward_ios, size: 24, iconSize: 12),
               onTap: () => Get.toNamed(AppRoutes.privacyPolicy),
             ),
-            const Divider(height: 1, color: AppColors.divider),
+            Container(
+              height: 0.5,
+              margin: const EdgeInsets.only(left: 60),
+              color: const Color(0xFFE5E5E5),
+            ),
             ListTile(
-              leading:
-                  Icon(Icons.description_outlined, color: AppColors.textLight),
-              title: const Text('Terms & Conditions'),
-              trailing: _arrowIcon(),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              leading: const Icon(Icons.description_outlined,
+                  color: Color(0xFF8E8E93), size: 24),
+              title: const Text(
+                'Terms & Conditions',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black,
+                ),
+              ),
+              trailing: const GradientCircleIcon(
+                  icon: Icons.arrow_forward_ios, size: 24, iconSize: 12),
               onTap: () => Get.toNamed(AppRoutes.termsAndConditions),
             ),
-            const Divider(height: 1, color: AppColors.divider),
+            Container(
+              height: 0.5,
+              margin: const EdgeInsets.only(left: 60),
+              color: const Color(0xFFE5E5E5),
+            ),
             ListTile(
-              leading: Icon(Icons.help_outline, color: AppColors.textLight),
-              title: const Text('Help & Support'),
-              trailing: _arrowIcon(),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              leading: const Icon(Icons.help_outline,
+                  color: Color(0xFF8E8E93), size: 24),
+              title: const Text(
+                'Help & Support',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black,
+                ),
+              ),
+              trailing: const GradientCircleIcon(
+                  icon: Icons.arrow_forward_ios, size: 24, iconSize: 12),
               onTap: () => Get.toNamed(AppRoutes.helpAndSupport),
             ),
           ],
         ),
       );
 
-  Widget _logoutCard() => Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 0,
-        color: AppColors.white,
+  Widget _logoutSection(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Column(
           children: [
             ListTile(
-              leading: Icon(Icons.delete_outline, color: AppColors.error),
-              title: const Text('Delete Account'),
-              trailing: _arrowIcon(),
-              onTap: () {},
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              leading: const Icon(Icons.delete_outline,
+                  color: Color(0xFFFF3B30), size: 24),
+              title: const Text(
+                'Delete Account',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black,
+                ),
+              ),
+              trailing: const GradientCircleIcon(
+                  icon: Icons.arrow_forward_ios, size: 24, iconSize: 12),
+              onTap: () => _showDeleteAccountDialog(context),
             ),
-            const Divider(height: 1, color: AppColors.divider),
+            Container(
+              height: 0.5,
+              margin: const EdgeInsets.only(left: 60),
+              color: const Color(0xFFE5E5E5),
+            ),
             ListTile(
-              leading: Icon(Icons.logout, color: AppColors.error),
-              title: const Text('Log Out',
-                  style: TextStyle(color: AppColors.error)),
-              trailing: _arrowIcon(),
-              onTap: () async {
-                await FirebaseAuth.instance.signOut();
-                // Replace below with your login route
-                Get.offAllNamed('/login');
-              },
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              leading:
+                  const Icon(Icons.logout, color: Color(0xFFFF3B30), size: 24),
+              title: const Text(
+                'Log Out',
+                style: TextStyle(
+                  color: Color(0xFFFF3B30),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              trailing: const GradientCircleIcon(
+                  icon: Icons.arrow_forward_ios, size: 24, iconSize: 12),
+              onTap: () => _showLogoutDialog(context),
             ),
           ],
         ),
       );
 
-  Widget _arrowIcon() => Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: AppColors.appGradient, // Apply gradient background
-          border: Border.all(
-            color: Colors.transparent, // Remove solid border
-            width: 2,
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ),
-        padding: const EdgeInsets.all(4),
-        child: ShaderMask(
-          shaderCallback: (bounds) =>
-              AppColors.appGradient.createShader(bounds),
-          child: const Icon(
-            Icons.arrow_forward_ios_rounded,
-            size: 16,
-            color: Colors.white, // Base color (will be replaced by gradient)
+          title: const Text(
+            'Delete Account',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
           ),
-        ),
+          content: const Text(
+            'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently removed.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () => _deleteAccount(context),
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Log Out',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+          ),
+          content: const Text(
+            'Are you sure you want to log out?',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await FirebaseAuth.instance.signOut();
+                Get.offAllNamed('/login');
+              },
+              child: const Text(
+                'Log Out',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteAccount(BuildContext context) async {
+    try {
+      Navigator.of(context).pop(); // Close dialog
+
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text('Deleting account...'),
+              ],
+            ),
+          );
+        },
       );
+
+      // Get the auth service
+      final authService = Get.find<AuthService>();
+
+      // Delete the account
+      await authService.deleteAccount();
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Navigate to login screen
+      Get.offAllNamed('/login');
+
+      // Show success message
+      Get.snackbar(
+        'Account Deleted',
+        'Your account has been successfully deleted.',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+      );
+    } catch (e) {
+      // Close loading dialog if it's open
+      Navigator.of(context).pop();
+
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              'Error',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
+              ),
+            ),
+            content: Text(
+              e.toString().replaceAll('Exception: ', ''),
+              style: const TextStyle(fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
 }

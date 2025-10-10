@@ -3,16 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_assets.dart';
+import '../../../widgets/enhanced_video_thumbnail_widget.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../controller/xori_userprofile_controller.dart';
 
 import '../../../models/post_model.dart';
+import '../../../models/reel_model.dart';
 import '../../../models/follow_user_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/follow_service.dart';
 import '../../../routes/app_routes.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../reels/view/reel_player_screen.dart';
 
 class _FollowButton extends StatelessWidget {
   final String currentUserId;
@@ -375,118 +378,66 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
   }
 
   Widget _buildStaggeredGridReels() {
-    return StreamBuilder<List<Post>>(
-      stream: controller.userReelsStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 32.0),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (snapshot.hasError) {
-          print(
-              '[DEBUG] XoriUserProfileScreen: Error loading reels: ${snapshot.error}');
-          return const SizedBox(
-            height: 200,
-            child: Center(
-              child: Text('Unable to load reels',
-                  style: TextStyle(color: Colors.grey)),
-            ),
-          );
-        }
-        final reels = snapshot.data ?? [];
-        if (reels.isEmpty) {
-          return const SizedBox(
-            height: 200,
-            child: Center(
-              child: Text('No reels yet', style: TextStyle(color: Colors.grey)),
-            ),
-          );
-        }
-        final heights = [
-          200.0,
-          180.0,
-          220.0,
-          160.0,
-          140.0,
-          240.0,
-          180.0,
-          200.0
-        ];
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: MasonryGridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: reels.length,
-            itemBuilder: (context, index) {
-              final reel = reels[index];
-              final height = heights[index % heights.length];
-              return _buildReelGridItem(reel, height: height);
-            },
+    return Obx(() {
+      final reels = controller.userReels;
+      
+      if (reels.isEmpty) {
+        return const SizedBox(
+          height: 200,
+          child: Center(
+            child: Text('No reels yet', style: TextStyle(color: Colors.grey)),
           ),
         );
-      },
-    );
+      }
+      
+      final heights = [
+        200.0,
+        180.0,
+        220.0,
+        160.0,
+        140.0,
+        240.0,
+        180.0,
+        200.0
+      ];
+      
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: MasonryGridView.count(
+          crossAxisCount: 2,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: reels.length,
+          itemBuilder: (context, index) {
+            final reel = reels[index];
+            final height = heights[index % heights.length];
+            return _buildReelGridItem(reel, height: height);
+          },
+        ),
+      );
+    });
   }
 
-  Widget _buildReelGridItem(Post reel, {double height = 200}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Stack(
-        children: [
-          Image.network(
-            reel.mediaUrls.isNotEmpty ? reel.mediaUrls.first : '',
-            fit: BoxFit.cover,
-            height: height,
-            width: double.infinity,
-            errorBuilder: (context, error, stackTrace) {
-              print(
-                  '[DEBUG] XoriUserProfileScreen: Error loading reel ${reel.mediaUrls.isNotEmpty ? reel.mediaUrls.first : 'no-url'}: $error');
-              return Container(
-                height: height,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.videocam, color: Colors.grey, size: 40),
-              );
-            },
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                height: height,
-                color: Colors.grey[200],
-                child: const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              );
-            },
-          ),
-          // Play icon overlay for reels
-          Positioned.fill(
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.play_arrow,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+  Widget _buildReelGridItem(Reel reel, {double height = 200}) {
+    return EnhancedVideoThumbnailWidget(
+      videoUrl: reel.videoUrl,
+      height: height,
+      width: double.infinity,
+      borderRadius: BorderRadius.circular(12),
+      showPlayButton: true,
+      playButtonColor: Colors.white,
+      playButtonSize: 36,
+      onTap: () {
+        print('[USER_PROFILE] Tapped on reel: ${reel.id}');
+        // Navigate to reel player screen
+        Get.to(
+          () => ReelPlayerScreen(reel: reel),
+          transition: Transition.fadeIn,
+          duration: const Duration(milliseconds: 300),
+        );
+      },
     );
   }
 

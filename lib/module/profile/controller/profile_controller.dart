@@ -4,16 +4,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../../../models/user_model.dart';
 import '../../../models/post_model.dart';
+import '../../../models/reel_model.dart';
 import '../../../services/post_service.dart';
-import '../../../services/follow_service.dart';
+import '../../../services/reel_service.dart';
 
 class ProfileController extends GetxController {
   final PostService _postService = PostService();
-  final FollowService _followService = FollowService();
+  final ReelService _reelService = ReelService();
 
   // Stream subscriptions
   StreamSubscription<DocumentSnapshot>? _userStreamSubscription;
   StreamSubscription<List<Post>>? _postsStreamSubscription;
+  StreamSubscription<List<Reel>>? _reelsStreamSubscription;
 
   // User data from Firestore
   var user = UserModel.empty.obs;
@@ -30,7 +32,7 @@ class ProfileController extends GetxController {
 
   // User posts data
   var userPosts = <Post>[].obs;
-  var userReels = <Post>[].obs;
+  var userReels = <Reel>[].obs;
 
   var activeTab = 0.obs; // 0 = Posts, 1 = Reels
 
@@ -44,6 +46,7 @@ class ProfileController extends GetxController {
   void onClose() {
     _userStreamSubscription?.cancel();
     _postsStreamSubscription?.cancel();
+    _reelsStreamSubscription?.cancel();
     super.onClose();
   }
 
@@ -52,6 +55,7 @@ class ProfileController extends GetxController {
     if (currentUser != null) {
       _startUserStream(currentUser.uid);
       _startPostsStream(currentUser.uid);
+      _startReelsStream(currentUser.uid);
     }
   }
 
@@ -98,19 +102,11 @@ class ProfileController extends GetxController {
     _postsStreamSubscription = _postService.streamUserPosts(userId).listen(
       (List<Post> allUserPosts) {
         try {
-          // Separate posts and reels
+          // Only handle posts (not videos)
           userPosts.clear();
-          userReels.clear();
+          userPosts.addAll(allUserPosts);
 
-          for (final post in allUserPosts) {
-            if (post.mediaType == 'video') {
-              userReels.add(post);
-            } else {
-              userPosts.add(post);
-            }
-          }
-
-          // Update posts count
+          // Update posts count (only posts, not reels)
           posts.value = allUserPosts.length;
         } catch (e) {
           print('Error processing posts data: $e');
@@ -121,6 +117,25 @@ class ProfileController extends GetxController {
       onError: (error) {
         print('Error in posts stream: $error');
         isLoadingPosts.value = false;
+      },
+    );
+  }
+
+  void _startReelsStream(String userId) {
+    _reelsStreamSubscription = _reelService.streamUserReels(userId).listen(
+      (List<Reel> userReelsList) {
+        try {
+          // Handle reels from reels collection
+          userReels.clear();
+          userReels.addAll(userReelsList);
+          
+          print('[DEBUG] ProfileController: Loaded ${userReels.length} reels');
+        } catch (e) {
+          print('Error processing reels data: $e');
+        }
+      },
+      onError: (error) {
+        print('Error in reels stream: $error');
       },
     );
   }
@@ -136,17 +151,16 @@ class ProfileController extends GetxController {
       // Cancel existing streams
       _userStreamSubscription?.cancel();
       _postsStreamSubscription?.cancel();
+      _reelsStreamSubscription?.cancel();
 
       // Restart streams
       _startUserStream(currentUser.uid);
       _startPostsStream(currentUser.uid);
+      _startReelsStream(currentUser.uid);
     }
   }
 
-  // Get posts for current tab
-  List<Post> get currentTabPosts {
-    return activeTab.value == 0 ? userPosts : userReels;
-  }
+
 
   // Manual refresh methods for backward compatibility
   Future<void> loadUserProfile() async {
@@ -169,6 +183,7 @@ class ProfileController extends GetxController {
       // Cancel all active streams
       _userStreamSubscription?.cancel();
       _postsStreamSubscription?.cancel();
+      _reelsStreamSubscription?.cancel();
 
       // Clear all observables
       user.value = UserModel.empty;

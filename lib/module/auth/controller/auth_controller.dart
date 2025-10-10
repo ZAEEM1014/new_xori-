@@ -467,6 +467,109 @@ class AuthController extends GetxController {
     }
   }
 
+  // Google Sign-In
+  Future<void> signInWithGoogle() async {
+    if (isLoading.value) return;
+
+    isLoading.value = true;
+    _clearMessages();
+
+    try {
+      final (credential, error) = await _authService.signInWithGoogle();
+
+      if (credential != null && error == null) {
+        // Check if this is a new user
+        final user = credential.user;
+        if (user != null) {
+          final userData = await _firestoreService.getUser(user.uid);
+          if (userData != null) {
+            final isNewUser =
+                DateTime.now().difference(userData.createdAt).inMinutes < 2;
+            if (isNewUser) {
+              _setSuccess(
+                  'Welcome to Xori! Your account has been created with Google.');
+            } else {
+              _setSuccess('Welcome back! Signed in with Google.');
+            }
+          } else {
+            _setSuccess(
+                'Welcome to Xori! Your account has been created with Google.');
+          }
+        } else {
+          _setSuccess('Google Sign-In successful! Welcome.');
+        }
+
+        // Reinitialize controllers with new user data
+        await _reinitializeControllersForNewUser();
+
+        // Navigate to navwrapper on successful login
+        Get.offAllNamed('/navwrapper');
+      } else {
+        if (error?.contains('cancelled') == true) {
+          _setError('Google Sign-In was cancelled. Please try again.');
+        } else {
+          _setError(error ?? 'Google Sign-In failed. Please try again.');
+        }
+      }
+    } catch (e) {
+      _setError('Google Sign-In error: ${e.toString()}');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Google Sign-Up
+  Future<void> signUpWithGoogle() async {
+    if (isLoading.value) return;
+
+    isLoading.value = true;
+    _clearMessages();
+
+    try {
+      final (credential, error) = await _authService.signUpWithGoogle();
+
+      if (credential != null && error == null) {
+        // Check if this is a new user
+        final user = credential.user;
+        if (user != null) {
+          final userData = await _firestoreService.getUser(user.uid);
+          if (userData != null) {
+            final isNewUser =
+                DateTime.now().difference(userData.createdAt).inMinutes < 2;
+            if (isNewUser) {
+              _setSuccess(
+                  'Welcome to Xori! Your Google account has been successfully created.');
+            } else {
+              _setSuccess(
+                  'Welcome back! This Google account already exists. You\'ve been signed in.');
+            }
+          } else {
+            _setSuccess(
+                'Welcome to Xori! Your Google account has been successfully created.');
+          }
+        } else {
+          _setSuccess('Google Sign-Up successful! Welcome to Xori.');
+        }
+
+        // Reinitialize controllers with new user data
+        await _reinitializeControllersForNewUser();
+
+        // Navigate to navwrapper on successful signup
+        Get.offAllNamed('/navwrapper');
+      } else {
+        if (error?.contains('cancelled') == true) {
+          _setError('Google Sign-Up was cancelled. Please try again.');
+        } else {
+          _setError(error ?? 'Google Sign-Up failed. Please try again.');
+        }
+      }
+    } catch (e) {
+      _setError('Google Sign-Up error: ${e.toString()}');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> signOut() async {
     if (isLoading.value) return;
 
@@ -477,7 +580,7 @@ class AuthController extends GetxController {
       // Clear all cached user data
       await _clearUserCache();
 
-      // Sign out from Firebase
+      // Sign out from Firebase and Google
       await _authService.signOut();
       user.value = null;
       _clearAllForms();

@@ -175,4 +175,48 @@ class FirestoreService {
       throw Exception('Failed to add contact to chat_list: $e');
     }
   }
+
+  /// Delete user document and all associated data
+  Future<void> deleteUser(String uid) async {
+    try {
+      print('[DEBUG] FirestoreService: Deleting user with UID: $uid');
+
+      // Get reference to user document
+      final userDocRef = _firestore.collection(_userCollection).doc(uid);
+
+      // Delete all subcollections (like chat_list, posts, etc.)
+      // Delete chat_list subcollection
+      final chatListQuery = await userDocRef.collection('chat_list').get();
+      for (final doc in chatListQuery.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete any posts by this user (if they exist in a posts collection)
+      final postsQuery = await _firestore
+          .collection('posts')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final doc in postsQuery.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete any stories by this user (if they exist)
+      final storiesQuery = await _firestore
+          .collection('stories')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final doc in storiesQuery.docs) {
+        await doc.reference.delete();
+      }
+
+      // Finally, delete the user document itself
+      await userDocRef.delete();
+
+      print(
+          '[DEBUG] FirestoreService: User $uid and all associated data deleted successfully');
+    } catch (e) {
+      print('[DEBUG] FirestoreService: Error deleting user $uid: $e');
+      throw Exception('Failed to delete user from database: $e');
+    }
+  }
 }

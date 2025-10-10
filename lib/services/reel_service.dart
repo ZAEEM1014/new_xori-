@@ -1,5 +1,10 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 import '../models/reel_model.dart';
 import '../models/reel_comment_model.dart';
 import '../models/saved_reel_model.dart';
@@ -286,6 +291,163 @@ class ReelService {
       });
     } catch (e) {
       throw Exception('Failed to stream all reels: ${e.toString()}');
+    }
+  }
+
+  // Get reels for a specific user
+  Stream<List<Reel>> streamUserReels(String userId) {
+    try {
+      return _firestore
+          .collection(_reelsCollection)
+          .where('userId', isEqualTo: userId)
+          .where('isDeleted', isEqualTo: false)
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snapshot) {
+        try {
+          return snapshot.docs.map((doc) => Reel.fromDoc(doc)).toList();
+        } catch (docError) {
+          print('Error parsing user reel document: $docError');
+          return <Reel>[];
+        }
+      }).handleError((error) {
+        print('Stream error for user reels: $error');
+        return <Reel>[];
+      });
+    } catch (e) {
+      throw Exception('Failed to stream user reels: ${e.toString()}');
+    }
+  }
+
+  // Get user reels count
+  Future<int> getUserReelsCount(String userId) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection(_reelsCollection)
+          .where('userId', isEqualTo: userId)
+          .where('isDeleted', isEqualTo: false)
+          .get();
+
+      return querySnapshot.docs.length;
+    } catch (e) {
+      throw Exception('Failed to get user reels count: ${e.toString()}');
+    }
+  }
+
+  // Thumbnail generation and caching functionality
+  Future<String?> generateVideoThumbnail(String videoUrl) async {
+    try {
+      // Generate cache key
+      final cacheKey = _generateCacheKey(videoUrl);
+      
+      // Check if thumbnail is already cached
+      final cachedPath = await _getCachedThumbnailPath(cacheKey);
+      if (cachedPath != null) {
+        return cachedPath;
+      }
+
+      // Generate new thumbnail
+      final thumbnailPath = await VideoThumbnail.thumbnailFile(
+        video: videoUrl,
+        thumbnailPath: await _getThumbnailDirectory(),
+        imageFormat: ImageFormat.JPEG,
+        maxHeight: 400,
+        maxWidth: 300,
+        timeMs: 1000,
+        quality: 85,
+      );
+
+      if (thumbnailPath != null) {
+        // Cache the thumbnail
+        await _cacheThumbnail(cacheKey, thumbnailPath);
+        return thumbnailPath;
+      }
+
+      return null;
+    } catch (e) {
+      print('Error generating thumbnail for $videoUrl: $e');
+      return null;
+    }
+  }
+
+  String _generateCacheKey(String videoUrl) {
+    final bytes = utf8.encode(videoUrl);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  Future<String?> _getCachedThumbnailPath(String cacheKey) async {
+    try {
+      final directory = await _getThumbnailDirectory();
+      final cachedFile = File('$directory/thumb_$cacheKey.jpg');
+      final exists = await cachedFile.exists();
+      return exists ? cachedFile.path : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> _cacheThumbnail(String cacheKey, String thumbnailPath) async {
+    try {
+      final directory = await _getThumbnailDirectory();
+      final cachedFile = File('$directory/thumb_$cacheKey.jpg');
+      final originalFile = File(thumbnailPath);
+      
+      if (await originalFile.exists()) {
+        await originalFile.copy(cachedFile.path);
+      }
+    } catch (e) {
+      print('Error caching thumbnail: $e');
+    }
+  }
+
+  Future<String> _getThumbnailDirectory() async {
+    final directory = await getTemporaryDirectory();
+    final thumbnailDir = Directory('${directory.path}/video_thumbnails');
+    
+    if (!await thumbnailDir.exists()) {
+      await thumbnailDir.create(recursive: true);
+    }
+    
+    return thumbnailDir.path;
+  }
+
+  // Clear thumbnail cache
+  Future<void> clearThumbnailCache() async {
+    try {
+      final directory = await _getThumbnailDirectory();
+      final thumbnailDir = Directory(directory);
+      
+      if (await thumbnailDir.exists()) {
+        await thumbnailDir.delete(recursive: true);
+      }
+    } catch (e) {
+      print('Error clearing thumbnail cache: $e');
+    }
+  }
+
+  // Get cache size
+  Future<int> getThumbnailCacheSize() async {
+    try {
+      final directory = await _getThumbnailDirectory();
+      final thumbnailDir = Directory(directory);
+      
+      if (!await thumbnailDir.exists()) {
+        return 0;
+      }
+
+      int totalSize = 0;
+      await for (final entity in thumbnailDir.list()) {
+        if (entity is File) {
+          final stat = await entity.stat();
+          totalSize += stat.size;
+        }
+      }
+      
+      return totalSize;
+    } catch (e) {
+      print('Error getting cache size: $e');
+      return 0;
     }
   }
 }

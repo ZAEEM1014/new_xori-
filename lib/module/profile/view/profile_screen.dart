@@ -3,10 +3,13 @@ import 'package:get/get.dart';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_assets.dart';
 import '../../../widgets/gradient_button.dart';
+import '../../../widgets/enhanced_video_thumbnail_widget.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../controller/profile_controller.dart';
 import '../../../models/post_model.dart';
+import '../../../models/reel_model.dart';
+import '../../reels/view/reel_player_screen.dart';
 
 class ProfileScreen extends GetView<ProfileController> {
   const ProfileScreen({super.key});
@@ -280,57 +283,24 @@ class ProfileScreen extends GetView<ProfileController> {
     );
   }
 
-  Widget _buildReelGridItem(Post reel, {double height = 200}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Stack(
-        children: [
-          Image.network(
-            reel.mediaUrls.isNotEmpty ? reel.mediaUrls.first : '',
-            fit: BoxFit.cover,
-            height: height,
-            width: double.infinity,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                height: height,
-                color: Colors.grey[300],
-                child: const Icon(
-                  Icons.videocam,
-                  color: Colors.grey,
-                  size: 40,
-                ),
-              );
-            },
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                height: height,
-                color: Colors.grey[200],
-                child: const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              );
-            },
-          ),
-          // Play icon overlay for reels
-          Positioned.fill(
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.play_arrow,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+  Widget _buildReelGridItem(Reel reel, {double height = 200}) {
+    return EnhancedVideoThumbnailWidget(
+      videoUrl: reel.videoUrl,
+      height: height,
+      width: double.infinity,
+      borderRadius: BorderRadius.circular(12),
+      showPlayButton: true,
+      playButtonColor: Colors.white,
+      playButtonSize: 36,
+      onTap: () {
+        print('[PROFILE] Tapped on reel: ${reel.id}');
+        // Navigate to reel player screen
+        Get.to(
+          () => ReelPlayerScreen(reel: reel),
+          transition: Transition.fadeIn,
+          duration: const Duration(milliseconds: 300),
+        );
+      },
     );
   }
 

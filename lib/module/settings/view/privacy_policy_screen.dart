@@ -19,7 +19,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Divider under app bar
-            const SizedBox(height: 304),
+            const SizedBox(height: 200),
             Divider(color: AppColors.divider, thickness: 1),
             const SizedBox(height: 18),
             // Privacy policy text

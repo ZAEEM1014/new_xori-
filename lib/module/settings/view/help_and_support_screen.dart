@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../widgets/custom_app_bar.dart';
 import '../../../constants/app_colors.dart';
+import '../../../widgets/gradient_circle_icon.dart';
 
 class HelpAndSupportScreen extends StatefulWidget {
   const HelpAndSupportScreen({Key? key}) : super(key: key);
@@ -28,174 +28,169 @@ class _HelpAndSupportScreenState extends State<HelpAndSupportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+      backgroundColor: AppColors.white,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios,
+              color: AppColors.textDark, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Help & Support',
+          style: TextStyle(
+            color: AppColors.textDark,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CustomAppBar(
-              title: 'Help & Support',
-              onBack: () => Navigator.of(context).pop(),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
-                    const Text(
-                      'FAQs',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 22,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...List.generate(_faqs.length, (index) {
-                      final item = _faqs[index];
-                      final expanded = _expandedIndex == index;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(color: Color(0xFFE0E0E0)),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: ExpansionPanelList(
-                          elevation: 0,
-                          expandedHeaderPadding: EdgeInsets.zero,
-                          expansionCallback: (panelIndex, isExpanded) {
-                            setState(() {
-                              _expandedIndex = expanded ? null : index;
-                            });
-                          },
-                          children: [
-                            ExpansionPanel(
-                              canTapOnHeader: true,
-                              isExpanded: expanded,
-                              headerBuilder: (context, isExpanded) {
-                                return ListTile(
-                                  title: Text(
-                                    item.question,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                );
-                              },
-                              body: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  item.answer,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Color.fromARGB(255, 255, 255, 255),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Contact Support',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 22,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 34,
-                      width: 234,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF8E1), // light background
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          width: 1.2,
-                          color: Colors
-                              .transparent, // border hidden under gradient
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          // Gradient icon box
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              gradient: AppColors.appGradient,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(8),
-                                bottomLeft: Radius.circular(8),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.phone,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Call Us at +45-222-3333',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Report a Problem',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 22,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 50,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: const Color(0xFFE0E0E0),
-                          width: 1.2,
-                        ),
-                      ),
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: const Text(
-                        'Email us at Tangerine@life.com',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(
-                              0xFF9E9E9E), // lighter gray placeholder tone
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  ],
+            // FAQs Section
+            _buildSectionTitle('FAQs'),
+            const SizedBox(height: 12),
+            ..._faqs.asMap().entries.map((entry) {
+              final index = entry.key;
+              final faq = entry.value;
+              return _buildFaqCard(faq, index);
+            }).toList(),
+
+            const SizedBox(height: 24),
+
+            // Contact Support Section
+            _buildSectionTitle('Contact Support'),
+            const SizedBox(height: 12),
+            _buildContactCard(),
+
+            const SizedBox(height: 24),
+
+            // Report a Problem Section
+            _buildSectionTitle('Report a Problem'),
+            const SizedBox(height: 12),
+            _buildReportCard(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textDark,
+      ),
+    );
+  }
+
+  Widget _buildFaqCard(_FaqItem faq, int index) {
+    final isExpanded = _expandedIndex == index;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        elevation: 0,
+        color: AppColors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: AppColors.iconBorder, width: 1),
+        ),
+        child: Column(
+          children: [
+            ListTile(
+              onTap: () {
+                setState(() {
+                  _expandedIndex = isExpanded ? null : index;
+                });
+              },
+              title: Text(
+                faq.question,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textDark,
                 ),
               ),
+              trailing: GradientCircleIcon(
+                icon: isExpanded
+                    ? Icons.keyboard_arrow_up
+                    : Icons.keyboard_arrow_down,
+                size: 24,
+              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             ),
+            if (isExpanded)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Text(
+                  faq.answer,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textLight,
+                    height: 1.4,
+                  ),
+                ),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactCard() {
+    return Card(
+      elevation: 0,
+      color: AppColors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: AppColors.iconBorder, width: 1),
+      ),
+      child: ListTile(
+        leading: GradientCircleIcon(
+          icon: Icons.phone,
+          size: 24,
+        ),
+        title: const Text(
+          'Call Us at +45-222-3333',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textDark,
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+    );
+  }
+
+  Widget _buildReportCard() {
+    return Card(
+      elevation: 0,
+      color: AppColors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: AppColors.iconBorder, width: 1),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        child: const Text(
+          'Email us at Tangerine@life.com',
+          style: TextStyle(
+            fontSize: 16,
+            color: AppColors.textLight,
+            fontWeight: FontWeight.w400,
+          ),
         ),
       ),
     );

@@ -12,7 +12,20 @@
           "package_name": "com.example.xori"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "2904749167-2isambhvvl951i4ociricb9dicjnepek.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.xori",
+            "certificate_hash": "132eb9ea58b968de645d1037720b50b169018195"
+          }
+        },
+        {
+          "client_id": "2904749167-l758tgnpra15roi6ab67q424gmq2r55i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDe41yhq4g2H07XoSbYRFpYee-eKnq5ONc"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "2904749167-l758tgnpra15roi6ab67q424gmq2r55i.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
