@@ -20,8 +20,6 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   late final PageController _pageController;
   int _currentIndex = 0;
   bool _isAppInBackground = false;
-  bool _isPageChanging = false;
-  DateTime _lastPageChangeTime = DateTime.now();
 
   @override
   void initState() {
@@ -42,7 +40,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     try {
       WidgetsBinding.instance.removeObserver(this);
       _pageController.dispose();
-      _controller.dispose();
+      // Don't dispose controller here - GetX manages it
     } catch (e) {
       debugPrint('Error disposing ReelsScreen: $e');
     }
@@ -74,8 +72,8 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     try {
       await _controller.loadReels();
 
-      // Initialize the first video after reels are loaded
-      Future.delayed(const Duration(milliseconds: 500), () {
+      // OPTIMIZATION: Initialize first video after frame is built to prevent flicker
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _controller.reels.isNotEmpty) {
           final firstReel = _controller.reels.first;
           debugPrint('Auto-initializing first reel: ${firstReel.id}');
@@ -129,112 +127,32 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     }
   }
 
+  // OPTIMIZATION: Simplified page change handler without debouncing flags
   void _onPageChanged(int index, List<Reel> reels) {
     try {
-      final now = DateTime.now();
-
-      // Debounce rapid page changes with longer delay
-      if (_isPageChanging ||
-          now.difference(_lastPageChangeTime).inMilliseconds < 300) {
-        debugPrint('Page change already in progress or too rapid');
+      if (index < 0 || index >= reels.length || index == _currentIndex) {
         return;
       }
-
-      if (index < 0 || index >= reels.length) {
-        debugPrint('Invalid page index: $index');
-        return;
-      }
-
-      if (index == _currentIndex) {
-        debugPrint('Same page index: $index');
-        return;
-      }
-
-      // Set page changing flag and update timestamp immediately
-      _isPageChanging = true;
-      _lastPageChangeTime = now;
 
       debugPrint('Page changed from $_currentIndex to $index');
 
-      // Immediately dispose distant videos first to free buffer memory
-      _disposeDistantVideosImmediate(index, reels);
-
-      // Pause previous video immediately
+      // OPTIMIZATION: Pause previous video without delay
       if (_currentIndex >= 0 && _currentIndex < reels.length) {
         final prevReel = reels[_currentIndex];
         _controller.pauseVideo(prevReel.id);
       }
 
-      // Update current index immediately
-      final oldIndex = _currentIndex;
+      // Update current index
       _currentIndex = index;
 
-      // Initialize and play current video with delay to ensure smooth transition
+      // OPTIMIZATION: Play current video immediately
       final currentReel = reels[index];
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted && _currentIndex == index && !_isPageChanging) {
-          _controller.initializeAndPlayVideo(
-              currentReel.id, currentReel.videoUrl);
-        }
-      });
+      _controller.initializeAndPlayVideo(currentReel.id, currentReel.videoUrl);
 
-      // Preload only one adjacent video to reduce memory pressure
-      _preloadAdjacentVideos(index, reels);
-
-      // Dispose old videos after a short delay
-      Future.delayed(const Duration(milliseconds: 150), () {
-        _disposeDistantVideos(index, reels, oldIndex);
-      });
-
-      // Reset page changing flag after longer delay
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _isPageChanging = false;
-      });
+      // OPTIMIZATION: Preload adjacent videos using controller's smart preloading
+      _controller.preloadAdjacentVideos(index);
     } catch (e) {
       debugPrint('Error handling page change: $e');
-      _isPageChanging = false;
-    }
-  }
-
-  void _preloadAdjacentVideos(int currentIndex, List<Reel> reels) {
-    // Only preload next video if we have available memory
-    if (currentIndex + 1 < reels.length &&
-        _controller.videoControllers.length < 2) {
-      final nextReel = reels[currentIndex + 1];
-      _controller.preloadVideo(nextReel.id, nextReel.videoUrl);
-    }
-  }
-
-  void _disposeDistantVideosImmediate(int currentIndex, List<Reel> reels) {
-    // Immediately dispose all videos except current and next
-    final videosToDispose = <String>[];
-
-    for (final controllerId in _controller.videoControllers.keys) {
-      final controllerIndex =
-          reels.indexWhere((reel) => reel.id == controllerId);
-      if (controllerIndex != -1) {
-        final distance = (controllerIndex - currentIndex).abs();
-        if (distance > 1) {
-          videosToDispose.add(controllerId);
-        }
-      }
-    }
-
-    // Dispose videos immediately
-    for (final id in videosToDispose) {
-      _controller.disposeVideoController(id);
-    }
-
-    debugPrint('Immediately disposed ${videosToDispose.length} distant videos');
-  }
-
-  void _disposeDistantVideos(int currentIndex, List<Reel> reels, int oldIndex) {
-    // Dispose videos that are more than 1 position away to save memory
-    for (int i = 0; i < reels.length; i++) {
-      if ((i - currentIndex).abs() > 1 && i != oldIndex) {
-        final reel = reels[i];
-        _controller.disposeVideoController(reel.id);
-      }
     }
   }
 
@@ -273,41 +191,31 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
             return _buildEmptyWidget();
           }
 
-          // Build reels list
+          // OPTIMIZATION: Build reels list with optimized PageView
           return RefreshIndicator(
             onRefresh: _controller.refreshReels,
             color: AppColors.primary,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: (scrollNotification) {
-                if (scrollNotification is ScrollUpdateNotification) {
-                  // Prevent scrolling if page change is in progress
-                  if (_isPageChanging) {
-                    return true;
-                  }
-                }
-                return false;
+            child: PageView.builder(
+              key: const PageStorageKey('reels_page_view'),
+              controller: _pageController,
+              scrollDirection: Axis.vertical,
+              itemCount: reels.length,
+              // OPTIMIZATION: Use BouncingScrollPhysics for smoother scrolling
+              physics: const BouncingScrollPhysics(),
+              pageSnapping: true,
+              onPageChanged: (index) => _onPageChanged(index, reels),
+              itemBuilder: (context, index) {
+                final reel = reels[index];
+                // OPTIMIZATION: Use AutomaticKeepAliveClientMixin via wrapper
+                return _ReelItemWrapper(
+                  key: ValueKey('reel_${reel.id}'),
+                  reel: reel,
+                  index: index,
+                  currentIndex: _currentIndex,
+                  controller: _controller,
+                  onTogglePlayPause: _togglePlayPause,
+                );
               },
-              child: PageView.builder(
-                key: const PageStorageKey('reels_page_view'),
-                controller: _pageController,
-                scrollDirection: Axis.vertical,
-                itemCount: reels.length,
-                physics: const ClampingScrollPhysics(),
-                pageSnapping: true,
-                allowImplicitScrolling: false,
-                padEnds: false,
-                onPageChanged: (index) => _onPageChanged(index, reels),
-                itemBuilder: (context, index) {
-                  final reel = reels[index];
-                  return RepaintBoundary(
-                    key: ValueKey('reel_boundary_${reel.id}'),
-                    child: Container(
-                      key: ValueKey('reel_${reel.id}'),
-                      child: _buildReelItem(reel, index),
-                    ),
-                  );
-                },
-              ),
             ),
           );
         },
@@ -315,49 +223,202 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildReelItem(Reel reel, int index) {
-    // Only initialize if within current view range and not changing pages
-    if (!_controller.videoControllers.containsKey(reel.id) &&
-        !_isPageChanging &&
-        (index == _currentIndex || (index - _currentIndex).abs() == 1)) {
+  void _togglePlayPause(String reelId) async {
+    await _controller.togglePlayPause(reelId);
+  }
+
+  Widget _buildErrorWidget(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error_outline,
+            size: 64,
+            color: AppColors.error,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Failed to load reels',
+            style: TextStyle(
+              color: AppColors.textDark,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            error,
+            style: TextStyle(
+              color: AppColors.textLight,
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          Container(
+            decoration: BoxDecoration(
+              gradient: AppColors.appGradient,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ElevatedButton(
+              onPressed: _controller.refreshReels,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: const Text('Retry'),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.video_library_outlined,
+            size: 64,
+            color: AppColors.textLight,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No reels found',
+            style: TextStyle(
+              color: AppColors.textDark,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pull to refresh or check back later',
+            style: TextStyle(
+              color: AppColors.textLight,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getTimeAgo(dynamic timestamp) {
+    try {
+      final now = DateTime.now();
+      final createdAt = timestamp.toDate() as DateTime;
+      final difference = now.difference(createdAt);
+
+      if (difference.inDays > 0) {
+        return '${difference.inDays}d ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours}h ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes}m ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      return '';
+    }
+  }
+}
+
+// OPTIMIZATION: Wrapper widget with AutomaticKeepAlive to prevent rebuilds
+class _ReelItemWrapper extends StatefulWidget {
+  final Reel reel;
+  final int index;
+  final int currentIndex;
+  final ReelController controller;
+  final Function(String) onTogglePlayPause;
+
+  const _ReelItemWrapper({
+    super.key,
+    required this.reel,
+    required this.index,
+    required this.currentIndex,
+    required this.controller,
+    required this.onTogglePlayPause,
+  });
+
+  @override
+  State<_ReelItemWrapper> createState() => _ReelItemWrapperState();
+}
+
+class _ReelItemWrapperState extends State<_ReelItemWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // OPTIMIZATION: Keep state alive
+
+  @override
+  void initState() {
+    super.initState();
+    // OPTIMIZATION: Initialize video only for current and adjacent items
+    _initializeVideoIfNeeded();
+  }
+
+  void _initializeVideoIfNeeded() {
+    final isCurrentOrAdjacent = widget.index == widget.currentIndex ||
+        (widget.index - widget.currentIndex).abs() == 1;
+
+    if (isCurrentOrAdjacent &&
+        !widget.controller.videoControllers.containsKey(widget.reel.id)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_isPageChanging) {
-          debugPrint('Initializing video for reel ${reel.id} at index $index');
-          if (index == _currentIndex) {
-            // For current video, initialize and play
-            _controller.initializeAndPlayVideo(reel.id, reel.videoUrl);
+        if (mounted) {
+          if (widget.index == widget.currentIndex) {
+            // Current video - initialize and play
+            widget.controller
+                .initializeAndPlayVideo(widget.reel.id, widget.reel.videoUrl);
           } else {
-            // For adjacent videos, just preload
-            _controller.preloadVideo(reel.id, reel.videoUrl);
+            // Adjacent video - preload only
+            widget.controller
+                .preloadVideo(widget.reel.id, widget.reel.videoUrl);
           }
         }
       });
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // OPTIMIZATION: Required for AutomaticKeepAlive
+
     return Obx(() {
-      final isLoading = _controller.isVideoLoading(reel.id);
-      final errorMessage = _controller.getVideoError(reel.id);
-      final controller = _controller.getVideoController(reel.id);
-      final isInitialized = _controller.isVideoInitialized(reel.id);
+      final isLoading = widget.controller.isVideoLoading(widget.reel.id);
+      final errorMessage = widget.controller.getVideoError(widget.reel.id);
+      final controller = widget.controller.getVideoController(widget.reel.id);
+      final isInitialized =
+          widget.controller.isVideoInitialized(widget.reel.id);
 
       return Stack(
         children: [
           // Video player or loading/error state
           SizedBox.expand(
-            child: _buildVideoWidget(
-                reel, isLoading, errorMessage, controller, isInitialized),
+            child: _buildVideoWidget(widget.reel, isLoading, errorMessage,
+                controller, isInitialized),
           ),
 
           // Tap to play/pause
           Positioned.fill(
             child: GestureDetector(
-              onTap: () => _togglePlayPause(reel.id),
+              onTap: () => widget.onTogglePlayPause(widget.reel.id),
               child: Container(color: Colors.transparent),
             ),
           ),
 
           // Center Play/Pause Button
           if (isInitialized && controller != null)
-            _buildCenterPlayPauseButton(reel.id, controller),
+            _buildCenterPlayPauseButton(widget.reel.id, controller),
 
           // Mute/Unmute Button (Top Right)
           Positioned(
@@ -370,15 +431,15 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
           Positioned(
             right: 15,
             bottom: 150,
-            child: _buildActionButtons(reel),
+            child: _buildActionButtons(widget.reel),
           ),
 
           // Bottom User Info + Caption
           Positioned(
             left: 15,
             right: 15,
-            bottom: 80,
-            child: _buildUserInfoSection(reel),
+            bottom: 100,
+            child: _buildUserInfoSection(widget.reel),
           ),
         ],
       );
@@ -387,9 +448,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
 
   Widget _buildVideoWidget(Reel reel, bool isLoading, String errorMessage,
       VideoPlayerController? controller, bool isInitialized) {
-    // Show error with fallback to image
+    // Show error with fallback
     if (errorMessage.isNotEmpty) {
-      return _buildMixedContentWidget(reel, errorMessage);
+      return _buildVideoErrorWidget(errorMessage, reel);
     }
 
     if (isLoading || !isInitialized || controller == null) {
@@ -418,55 +479,74 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       );
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        GestureDetector(
-          onTap: () => _controller.togglePlayPause(reel.id),
-          child: Container(
-            color: Colors.black,
-            child: Center(
-              child: controller.value.isInitialized
-                  ? FittedBox(
-                      fit: BoxFit.contain,
-                      child: SizedBox(
-                        width: controller.value.size.width,
-                        height: controller.value.size.height,
-                        child: VideoPlayer(controller),
-                      ),
-                    )
-                  : const CircularProgressIndicator(
-                      color: Colors.white,
-                    ),
-            ),
-          ),
+    // OPTIMIZATION: Use RepaintBoundary to isolate video repaints
+    return RepaintBoundary(
+      child: Container(
+        color: Colors.black,
+        child: Center(
+          child: controller.value.isInitialized
+              ? AspectRatio(
+                  aspectRatio: controller.value.aspectRatio,
+                  child: VideoPlayer(controller),
+                )
+              : const CircularProgressIndicator(color: Colors.white),
         ),
-        // Center play/pause button
-        _buildCenterPlayPauseButton(reel.id, controller),
-        // Mute button in top right
-        Positioned(
-          top: 50,
-          right: 16,
-          child: _buildMuteButton(),
-        ),
-        // Progress indicator at bottom
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: _buildProgressIndicator(controller),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildMixedContentWidget(Reel reel, String errorMessage) {
-    // Don't try to show video URLs as images - just show error widget
-    return _buildVideoErrorWidget(errorMessage, reel);
+  Widget _buildCenterPlayPauseButton(
+      String reelId, VideoPlayerController controller) {
+    return Obx(() {
+      final isPlaying = widget.controller.isVideoPlaying(reelId);
+
+      // OPTIMIZATION: Don't show button when playing to reduce UI updates
+      if (isPlaying) {
+        return const SizedBox.shrink();
+      }
+
+      return Center(
+        child: GestureDetector(
+          onTap: () => widget.onTogglePlayPause(reelId),
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.6),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.play_arrow,
+              color: Colors.white,
+              size: 50,
+            ),
+          ),
+        ),
+      );
+    });
   }
 
-  void _togglePlayPause(String reelId) async {
-    await _controller.togglePlayPause(reelId);
+  Widget _buildMuteButton() {
+    return Obx(() {
+      return GestureDetector(
+        onTap: () => widget.controller.toggleMute(),
+        child: Container(
+          width: 45,
+          height: 45,
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.6),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            widget.controller.isMuted.value
+                ? Icons.volume_off
+                : Icons.volume_up,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
+      );
+    });
   }
 
   Widget _buildActionButtons(Reel reel) {
@@ -476,10 +556,10 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         Column(
           children: [
             Obx(() => AppLikeButton(
-                  isLiked: _controller.isReelLiked(reel.id),
-                  likeCount: _controller.getReelLikeCount(reel.id),
+                  isLiked: widget.controller.isReelLiked(reel.id),
+                  likeCount: widget.controller.getReelLikeCount(reel.id),
                   onTap: (liked) async {
-                    await _controller.toggleLike(reel.id);
+                    await widget.controller.toggleLike(reel.id);
                   },
                   size: 32,
                   likeCountColor: Colors.white,
@@ -488,7 +568,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
                 )),
             const SizedBox(height: 6),
             Obx(() => Text(
-                  _controller.getReelLikeCount(reel.id).toString(),
+                  widget.controller.getReelLikeCount(reel.id).toString(),
                   style: const TextStyle(color: Colors.white, fontSize: 12),
                 )),
           ],
@@ -499,7 +579,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         // Comment Icon
         Obx(() => _buildActionIcon(
               'assets/icons/comment.svg',
-              _controller.getReelCommentCount(reel.id).toString(),
+              widget.controller.getReelCommentCount(reel.id).toString(),
               () {
                 showModalBottomSheet(
                   context: context,
@@ -517,9 +597,9 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         // Share Icon
         Obx(() => _buildActionIcon(
               'assets/icons/share.svg',
-              _controller.getReelShareCount(reel.id).toString(),
+              widget.controller.getReelShareCount(reel.id).toString(),
               () {
-                _controller.shareReel(reel.id);
+                widget.controller.shareReel(reel.id);
               },
             )),
 
@@ -528,15 +608,15 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
         // Saved Button
         GestureDetector(
           onTap: () {
-            _controller.toggleSave(reel.id);
+            widget.controller.toggleSave(reel.id);
           },
           child: Column(
             children: [
               Obx(() => Icon(
-                    _controller.isReelSaved(reel.id)
+                    widget.controller.isReelSaved(reel.id)
                         ? Icons.bookmark
                         : Icons.bookmark_border,
-                    color: _controller.isReelSaved(reel.id)
+                    color: widget.controller.isReelSaved(reel.id)
                         ? Colors.orange
                         : Colors.white,
                     size: 32,
@@ -639,81 +719,7 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildErrorWidget(String error) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: AppColors.error,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Failed to load reels',
-            style: TextStyle(
-              color: AppColors.textDark,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            error,
-            style: TextStyle(
-              color: AppColors.textLight,
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _controller.refreshReels,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.video_library_outlined,
-            size: 64,
-            color: AppColors.textLight,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No reels found',
-            style: TextStyle(
-              color: AppColors.textDark,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Pull to refresh or check back later',
-            style: TextStyle(
-              color: AppColors.textLight,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVideoErrorWidget(String? errorMessage, [Reel? reel]) {
+  Widget _buildVideoErrorWidget(String? errorMessage, Reel reel) {
     return Container(
       color: Colors.grey[300],
       child: Center(
@@ -742,13 +748,8 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () {
-                if (reel != null) {
-                  // Retry specific video
-                  _controller.retryVideoInitialization(reel.id, reel.videoUrl);
-                } else {
-                  // Refresh all reels
-                  _controller.refreshReels();
-                }
+                widget.controller
+                    .retryVideoInitialization(reel.id, reel.videoUrl);
               },
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Retry'),
@@ -783,83 +784,5 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
     } catch (e) {
       return '';
     }
-  }
-
-  // Additional interaction methods with error handling
-
-  Widget _buildCenterPlayPauseButton(
-      String reelId, VideoPlayerController controller) {
-    return Obx(() {
-      final isPlaying = _controller.isVideoPlaying(reelId);
-
-      // Only show play button when paused and hide after a few seconds when playing
-      if (isPlaying) {
-        // Hide button after 2 seconds of playing
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) setState(() {});
-        });
-        return const SizedBox.shrink();
-      }
-
-      return Center(
-        child: GestureDetector(
-          onTap: () => _togglePlayPause(reelId),
-          child: Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.play_arrow,
-              color: Colors.white,
-              size: 50,
-            ),
-          ),
-        ),
-      );
-    });
-  }
-
-  Widget _buildMuteButton() {
-    return Obx(() {
-      return GestureDetector(
-        onTap: () => _controller.toggleMute(),
-        child: Container(
-          width: 45,
-          height: 45,
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.6),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            _controller.isMuted.value ? Icons.volume_off : Icons.volume_up,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-      );
-    });
-  }
-
-  Widget _buildProgressIndicator(VideoPlayerController controller) {
-    return ValueListenableBuilder<VideoPlayerValue>(
-      valueListenable: controller,
-      builder: (context, value, child) {
-        if (!value.isInitialized) return SizedBox.shrink();
-
-        return Container(
-          height: 2,
-          child: LinearProgressIndicator(
-            value: value.duration.inMilliseconds > 0
-                ? value.position.inMilliseconds / value.duration.inMilliseconds
-                : 0.0,
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-            backgroundColor: Colors.white.withOpacity(0.3),
-          ),
-        );
-      },
-    );
   }
 }

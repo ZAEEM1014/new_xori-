@@ -124,7 +124,7 @@ class ProfileScreen extends GetView<ProfileController> {
                   child: GradientButton(
                     text: "Edit Profile",
                     onPressed: () {
-                      // TODO: Implement edit profile action
+                      Get.toNamed('/editProfile');
                     },
                     height: 44,
                     borderRadius: 10,
