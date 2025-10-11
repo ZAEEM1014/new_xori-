@@ -9,7 +9,6 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../controller/profile_controller.dart';
 import '../../../models/post_model.dart';
 import '../../../models/reel_model.dart';
-import '../../reels/view/reel_player_screen.dart';
 
 class ProfileScreen extends GetView<ProfileController> {
   const ProfileScreen({super.key});
@@ -293,13 +292,7 @@ class ProfileScreen extends GetView<ProfileController> {
       playButtonColor: Colors.white,
       playButtonSize: 36,
       onTap: () {
-        print('[PROFILE] Tapped on reel: ${reel.id}');
-        // Navigate to reel player screen
-        Get.to(
-          () => ReelPlayerScreen(reel: reel),
-          transition: Transition.fadeIn,
-          duration: const Duration(milliseconds: 300),
-        );
+        // Disabled navigation for now
       },
     );
   }

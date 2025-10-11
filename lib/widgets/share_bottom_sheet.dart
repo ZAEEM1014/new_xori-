@@ -16,7 +16,8 @@ class ShareBottomSheet extends StatelessWidget {
   }) : super(key: key);
 
   /// Factory constructor for posts
-  factory ShareBottomSheet.forPost(String postId, {VoidCallback? onShareCompleted}) {
+  factory ShareBottomSheet.forPost(String postId,
+      {VoidCallback? onShareCompleted}) {
     return ShareBottomSheet(
       shareLink: 'https://xori.app/post/$postId',
       shareText: 'Check out this amazing post on Xori!',
@@ -25,7 +26,8 @@ class ShareBottomSheet extends StatelessWidget {
   }
 
   /// Factory constructor for reels
-  factory ShareBottomSheet.forReel(String reelId, {VoidCallback? onShareCompleted}) {
+  factory ShareBottomSheet.forReel(String reelId,
+      {VoidCallback? onShareCompleted}) {
     return ShareBottomSheet(
       shareLink: 'https://xori.app/reel/$reelId',
       shareText: 'Check out this awesome reel on Xori!',
@@ -125,7 +127,8 @@ class ShareBottomSheet extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        icon: const Icon(Icons.share, color: Colors.white, size: 20),
+                        icon: const Icon(Icons.share,
+                            color: Colors.white, size: 20),
                         label: const Text(
                           'Share via Apps',
                           style: TextStyle(
@@ -154,7 +157,8 @@ class ShareBottomSheet extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        icon: Icon(Icons.link, color: AppColors.primary, size: 20),
+                        icon: Icon(Icons.link,
+                            color: AppColors.primary, size: 20),
                         label: Text(
                           'Copy Link',
                           style: TextStyle(
@@ -191,7 +195,7 @@ class ShareBottomSheet extends StatelessWidget {
     try {
       await Clipboard.setData(ClipboardData(text: shareLink));
       Navigator.of(context).pop('copy');
-      
+
       // Show success snackbar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -223,10 +227,9 @@ class ShareBottomSheet extends StatelessWidget {
 
   Future<void> _shareViaApps(BuildContext context) async {
     try {
-      final textToShare = shareText.isNotEmpty 
-          ? '$shareText\n\n$shareLink' 
-          : shareLink;
-          
+      final textToShare =
+          shareText.isNotEmpty ? '$shareText\n\n$shareLink' : shareLink;
+
       await Share.share(textToShare);
       Navigator.of(context).pop('share');
 

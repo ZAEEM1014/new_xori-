@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_assets.dart';
 import '../../../widgets/enhanced_video_thumbnail_widget.dart';
+import '../../../widgets/custom_follow_button.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../controller/xori_userprofile_controller.dart';
@@ -12,60 +13,8 @@ import '../../../models/post_model.dart';
 import '../../../models/reel_model.dart';
 import '../../../models/follow_user_model.dart';
 import '../../../models/user_model.dart';
-import '../../../services/follow_service.dart';
 import '../../../routes/app_routes.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../reels/view/reel_player_screen.dart';
-
-class _FollowButton extends StatelessWidget {
-  final String currentUserId;
-  final FollowUser targetUser;
-  final VoidCallback? onFollowToggled;
-  final FollowService _followService = FollowService();
-
-  _FollowButton(
-      {required this.currentUserId,
-      required this.targetUser,
-      this.onFollowToggled,
-      Key? key})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<bool>(
-      stream:
-          _followService.isFollowingStream(currentUserId, targetUser.userId),
-      builder: (context, snapshot) {
-        final isFollowing = snapshot.data ?? false;
-        return ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isFollowing ? AppColors.primary : Colors.white,
-            foregroundColor: isFollowing ? Colors.white : AppColors.primary,
-            side: BorderSide(color: AppColors.primary),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            minimumSize: const Size.fromHeight(44),
-          ),
-          onPressed: () async {
-            await _followService.toggleFollow(currentUserId, targetUser);
-            // Refresh counts after follow/unfollow
-            if (onFollowToggled != null) {
-              onFollowToggled!();
-            }
-          },
-          child: Text(
-            isFollowing ? 'Following' : 'Follow',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
 
 class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
   const XoriUserProfileScreen({super.key});
@@ -186,7 +135,7 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: _FollowButton(
+                        child: CustomFollowButton(
                           currentUserId: FirebaseAuth.instance.currentUser!.uid,
                           targetUser: FollowUser(
                             userId: controller.user.value.uid,
@@ -195,6 +144,10 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
                                 controller.user.value.profileImageUrl ?? '',
                             followedAt: Timestamp.now(),
                           ),
+                          height: 44,
+                          width: double.infinity,
+                          borderRadius: 10,
+                          fontSize: 16,
                           onFollowToggled: () {
                             // Refresh counts when follow/unfollow happens
                             controller.refreshCounts();
@@ -380,7 +333,7 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
   Widget _buildStaggeredGridReels() {
     return Obx(() {
       final reels = controller.userReels;
-      
+
       if (reels.isEmpty) {
         return const SizedBox(
           height: 200,
@@ -389,18 +342,9 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
           ),
         );
       }
-      
-      final heights = [
-        200.0,
-        180.0,
-        220.0,
-        160.0,
-        140.0,
-        240.0,
-        180.0,
-        200.0
-      ];
-      
+
+      final heights = [200.0, 180.0, 220.0, 160.0, 140.0, 240.0, 180.0, 200.0];
+
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: MasonryGridView.count(
@@ -430,13 +374,7 @@ class XoriUserProfileScreen extends GetView<XoriUserProfileController> {
       playButtonColor: Colors.white,
       playButtonSize: 36,
       onTap: () {
-        print('[USER_PROFILE] Tapped on reel: ${reel.id}');
-        // Navigate to reel player screen
-        Get.to(
-          () => ReelPlayerScreen(reel: reel),
-          transition: Transition.fadeIn,
-          duration: const Duration(milliseconds: 300),
-        );
+        // Disabled navigation for now
       },
     );
   }

@@ -16,4 +16,5 @@ class AppRoutes {
   static const String helpAndSupport = '/helpAndSupport';
   static const String editProfile = '/editProfile';
   static const String sessionControl = '/sessionControl';
+  static const String notifications = '/notifications';
 }

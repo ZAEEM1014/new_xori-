@@ -30,7 +30,7 @@ class ReelShareBottomSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 16),
-              
+
               // Drag handle
               Container(
                 width: 40,
@@ -40,9 +40,9 @@ class ReelShareBottomSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Title
               const Text(
                 'Share Reel',
@@ -52,9 +52,9 @@ class ReelShareBottomSheet extends StatelessWidget {
                   color: Colors.black,
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Link display with copy button
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -71,7 +71,7 @@ class ReelShareBottomSheet extends StatelessWidget {
                         child: SelectableText(
                           link,
                           style: const TextStyle(
-                            fontWeight: FontWeight.w500, 
+                            fontWeight: FontWeight.w500,
                             fontSize: 14,
                             color: Colors.black87,
                           ),
@@ -90,16 +90,17 @@ class ReelShareBottomSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Share via apps button
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.share, color: Colors.white, size: 20),
+                    icon:
+                        const Icon(Icons.share, color: Colors.white, size: 20),
                     label: const Text(
                       'Share via...',
                       style: TextStyle(
@@ -118,7 +119,7 @@ class ReelShareBottomSheet extends StatelessWidget {
                     ),
                     onPressed: () async {
                       try {
-                        final shareText = reel.caption.isNotEmpty 
+                        final shareText = reel.caption.isNotEmpty
                             ? '${reel.caption}\n\nWatch this reel: $link'
                             : 'Check out this reel: $link';
                         await Share.share(shareText);
@@ -132,9 +133,9 @@ class ReelShareBottomSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Cancel button
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -159,7 +160,7 @@ class ReelShareBottomSheet extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
             ],
           ),

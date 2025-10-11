@@ -9,6 +9,8 @@ import 'package:xori/module/settings/view/edit_profile_screen.dart';
 import 'package:xori/module/settings/view/session_control_screen.dart';
 import 'package:xori/module/settings/binding/edit_profile_binding.dart';
 import 'package:xori/module/settings/binding/session_control_binding.dart';
+import '../module/notifications/view/notifications_screen.dart';
+import '../module/notifications/binding/notifications_binding.dart';
 
 import '../module/xori_userprofile/view/xori_userprofile_screen.dart';
 import '../module/xori_userprofile/binding/xori_userprofile_binding.dart';
@@ -105,6 +107,11 @@ class AppPages {
       name: AppRoutes.sessionControl,
       page: () => const SessionControlScreen(),
       binding: SessionControlBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.notifications,
+      page: () => const NotificationsScreen(),
+      binding: NotificationsBinding(),
     ),
   ];
 }

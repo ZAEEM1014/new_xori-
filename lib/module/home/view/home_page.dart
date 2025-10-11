@@ -6,6 +6,7 @@ import '../controller/home_controller.dart';
 import '../../../widgets/post_card.dart';
 import '../../../constants/app_assets.dart';
 import '../../../widgets/post_shimmer.dart';
+import '../../../routes/app_routes.dart';
 
 class HomePage extends GetView<HomeController> {
   const HomePage({Key? key}) : super(key: key);
@@ -95,8 +96,11 @@ class HomePage extends GetView<HomeController> {
                         return Padding(
                           padding: const EdgeInsets.only(left: 16),
                           child: GestureDetector(
-                            onTap:
-                                isSend ? () => Get.toNamed('/chatList') : null,
+                            onTap: isSend
+                                ? () => Get.toNamed(AppRoutes.chatList)
+                                : (path == AppAssets.homeheart)
+                                    ? () => Get.toNamed(AppRoutes.notifications)
+                                    : null,
                             child: SvgPicture.asset(
                               path,
                               height: height,

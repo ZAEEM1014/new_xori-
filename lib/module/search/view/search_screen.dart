@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart' hide SearchController;
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_assets.dart';
+import '../../../widgets/custom_follow_button.dart';
 import '../../search/controller/search_controller.dart';
-
 import '../../../models/user_model.dart';
 import '../../../models/post_model.dart';
+import '../../../models/follow_user_model.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class SearchScreen extends GetView<SearchController> {
@@ -291,54 +294,31 @@ class SearchScreen extends GetView<SearchController> {
               ),
             ),
             const SizedBox(width: 12),
-            _buildFollowButton(user),
+            SizedBox(
+              width: 72,
+              height: 28,
+              child: CustomFollowButton(
+                currentUserId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                targetUser: FollowUser(
+                  userId: user.uid,
+                  username: user.username,
+                  userPhotoUrl: user.profileImageUrl ?? '',
+                  followedAt: Timestamp.now(),
+                ),
+                height: 28,
+                width: 72,
+                borderRadius: 6,
+                fontSize: 12,
+                padding: EdgeInsets.zero,
+                onFollowToggled: () {
+                  // Optionally refresh search results
+                },
+              ),
+            ),
           ],
         ),
       ),
     );
-  }
-
-  Widget _buildFollowButton(UserModel user) {
-    return Obx(() {
-      final isFollowing = controller.followingStatus[user.uid] ?? false;
-
-      return SizedBox(
-        width: 72,
-        height: 28,
-        child: ElevatedButton(
-          onPressed: () => controller.toggleFollow(user),
-          style: ElevatedButton.styleFrom(
-            backgroundColor:
-                isFollowing ? Colors.grey[200] : Colors.transparent,
-            foregroundColor: isFollowing ? AppColors.textDark : Colors.white,
-            elevation: 0,
-            padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-              side: isFollowing
-                  ? const BorderSide(color: Color(0xFFE0E0E0))
-                  : BorderSide.none,
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: isFollowing ? null : AppColors.appGradient,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Center(
-              child: Text(
-                isFollowing ? 'Following' : 'Follow',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isFollowing ? AppColors.textDark : Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    });
   }
 
   Widget _buildPostsGrid() {
