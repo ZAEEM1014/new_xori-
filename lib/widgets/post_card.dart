@@ -15,9 +15,9 @@ import 'package:xori/services/post_service.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'comment_bottom_sheet.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'saved_button.dart';
+import 'share_bottom_sheet.dart';
 
 class PostCard extends StatefulWidget {
   final dynamic
@@ -40,87 +40,17 @@ class _PostCardState extends State<PostCard> {
     await Future.delayed(const Duration(milliseconds: 80));
     setState(() => _shareIconScale = 1.0);
 
-    final link = 'https://xori.app/post/$postId';
-
-    final result = await showModalBottomSheet<String>(
+    await showPostShareBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: MediaQuery.of(context).viewInsets,
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: SelectableText(
-                          link,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 15),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, color: Colors.black),
-                        onPressed: () async {
-                          await Clipboard.setData(ClipboardData(text: link));
-                          Navigator.of(context).pop('copy');
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.share, color: Colors.white),
-                      label: const Text('Share',
-                          style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: () async {
-                        try {
-                          await Share.share(link);
-                        } catch (_) {}
-                        Navigator.of(context).pop('share');
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-        );
+      postId: postId,
+      onShareCompleted: () async {
+        // Update share count in Firestore when sharing is completed
+        final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+        if (currentUserId != null) {
+          await PostService().addShare(postId, currentUserId);
+        }
       },
     );
-
-    if (result == 'copy') {
-      // Already copied in the bottom sheet, just show snackbar
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Link copied to clipboard!')),
-      );
-    }
-    if (result == 'copy' || result == 'share') {
-      if (currentUserId != null) {
-        await PostService().addShare(postId, currentUserId!);
-      }
-    }
   }
 
   // For comment icon animation
@@ -134,7 +64,7 @@ class _PostCardState extends State<PostCard> {
     await Future.delayed(const Duration(milliseconds: 80));
     setState(() => _commentIconScale = 1.0);
     // Show the bottom sheet and listen for result
-    final result = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
@@ -148,7 +78,6 @@ class _PostCardState extends State<PostCard> {
         },
       ),
     );
-    // Optionally handle result
   }
 
   late String? currentUserId;

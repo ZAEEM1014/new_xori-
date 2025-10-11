@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../../../constants/app_colors.dart';
 import '../../../widgets/app_like_button.dart';
 import '../../../widgets/reel_comment_bottom_sheet.dart';
+import '../../../widgets/reel_share_bottom_sheet.dart';
 import '../../../models/reel_model.dart';
 import '../controller/reels_controller.dart';
 
@@ -148,9 +149,6 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       // OPTIMIZATION: Play current video immediately
       final currentReel = reels[index];
       _controller.initializeAndPlayVideo(currentReel.id, currentReel.videoUrl);
-
-      // OPTIMIZATION: Preload adjacent videos using controller's smart preloading
-      _controller.preloadAdjacentVideos(index);
     } catch (e) {
       debugPrint('Error handling page change: $e');
     }
@@ -160,11 +158,15 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text("Reels", style: TextStyle(color: AppColors.textDark)),
+        title: const Text("Reels", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: const Icon(Icons.arrow_back, color: Colors.black),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Get.back(),
+        ),
       ),
       body: StreamBuilder<List<Reel>>(
         stream: _controller.reelsStream,
@@ -312,26 +314,6 @@ class _ReelsScreenState extends State<ReelsScreen> with WidgetsBindingObserver {
       ),
     );
   }
-
-  String _getTimeAgo(dynamic timestamp) {
-    try {
-      final now = DateTime.now();
-      final createdAt = timestamp.toDate() as DateTime;
-      final difference = now.difference(createdAt);
-
-      if (difference.inDays > 0) {
-        return '${difference.inDays}d ago';
-      } else if (difference.inHours > 0) {
-        return '${difference.inHours}h ago';
-      } else if (difference.inMinutes > 0) {
-        return '${difference.inMinutes}m ago';
-      } else {
-        return 'Just now';
-      }
-    } catch (e) {
-      return '';
-    }
-  }
 }
 
 // OPTIMIZATION: Wrapper widget with AutomaticKeepAlive to prevent rebuilds
@@ -422,7 +404,7 @@ class _ReelItemWrapperState extends State<_ReelItemWrapper>
 
           // Mute/Unmute Button (Top Right)
           Positioned(
-            top: 50,
+            top: MediaQuery.of(context).padding.top + 10,
             right: 15,
             child: _buildMuteButton(),
           ),
@@ -430,15 +412,15 @@ class _ReelItemWrapperState extends State<_ReelItemWrapper>
           // Right Side Action Icons
           Positioned(
             right: 15,
-            bottom: 150,
+            bottom: MediaQuery.of(context).padding.bottom + 150,
             child: _buildActionButtons(widget.reel),
           ),
 
           // Bottom User Info + Caption
           Positioned(
             left: 15,
-            right: 15,
-            bottom: 100,
+            right: 80, // Leave space for action buttons
+            bottom: MediaQuery.of(context).padding.bottom + 100,
             child: _buildUserInfoSection(widget.reel),
           ),
         ],
@@ -481,16 +463,22 @@ class _ReelItemWrapperState extends State<_ReelItemWrapper>
 
     // OPTIMIZATION: Use RepaintBoundary to isolate video repaints
     return RepaintBoundary(
-      child: Container(
-        color: Colors.black,
-        child: Center(
-          child: controller.value.isInitialized
-              ? AspectRatio(
-                  aspectRatio: controller.value.aspectRatio,
+      child: SizedBox.expand(
+        child: controller.value.isInitialized
+            ? FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: controller.value.size.width,
+                  height: controller.value.size.height,
                   child: VideoPlayer(controller),
-                )
-              : const CircularProgressIndicator(color: Colors.white),
-        ),
+                ),
+              )
+            : Container(
+                color: Colors.black,
+                child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              ),
       ),
     );
   }
@@ -598,8 +586,9 @@ class _ReelItemWrapperState extends State<_ReelItemWrapper>
         Obx(() => _buildActionIcon(
               'assets/icons/share.svg',
               widget.controller.getReelShareCount(reel.id).toString(),
-              () {
-                widget.controller.shareReel(reel.id);
+              () async {
+                // Use the new reel share bottom sheet
+                await ReelShareBottomSheet.show(context, reel);
               },
             )),
 
